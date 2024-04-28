@@ -1,4 +1,4 @@
-﻿Shader "Boat Attack/Water/Buffer/FoamOnly"
+Shader "Boat Attack/Water/Buffer/FoamOnly"
 {
 	Properties
 	{
@@ -42,7 +42,9 @@
 			};
 
 			sampler2D _MainTex;
+            CBUFFER_START(UnityPerMaterial)
 			half _Intensity;
+            CBUFFER_END
 			
 			v2f vert (appdata v)
 			{

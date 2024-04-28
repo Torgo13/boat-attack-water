@@ -8,10 +8,10 @@ Shader "Boat Attack/Water/WaterBuffer/WaterDepthOnly"
     {
         Tags { "RenderType"="Transparent" "Queue"="Transparent" "RenderPipeline" = "UniversalPipeline" }
         Cull Off
-		ZWrite Off
+        ZWrite Off
         ZTest Always
-		//Blend One One
-        LOD 100
+        //Blend One One
+		LOD 100
 
         Pass
         {
@@ -19,7 +19,7 @@ Shader "Boat Attack/Water/WaterBuffer/WaterDepthOnly"
 			Tags{"LightMode" = "WaterFX"}
 
             ColorMask B 1
-            
+			
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag

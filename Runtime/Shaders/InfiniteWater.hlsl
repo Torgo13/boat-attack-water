@@ -42,10 +42,13 @@ InfinitePlane WorldPlane(float4 viewDirection, float3 positionWS)
  
     // Shape information
     float3 shapeUpDir = normalize(mul(unity_ObjectToWorld, float4(0,1,0,0)).xyz);
-    float3 shapeOrigin = viewDirection;
+    float3 shapeOrigin = viewDirection.xyz;
     
     // Intersect information
     float intersect = intersectPlane(lineOrigin, lineDir, shapeOrigin, shapeUpDir);
+
+    // Clamp infinity
+    intersect = clamp(intersect, -1e18, 1e9);
 
     float3 pos = lineOrigin - shapeOrigin + lineDir * intersect;
     output.positionWS = pos + offset;

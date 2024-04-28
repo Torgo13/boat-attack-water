@@ -1,4 +1,4 @@
-﻿Shader "Boat Attack/Water/Buffer/Base"
+Shader "Boat Attack/Water/Buffer/Base"
 {
 	Properties
 	{
@@ -25,7 +25,7 @@
 			#pragma vertex WaterFXVertex
 			#pragma fragment WaterFXFragment
 			#pragma shader_feature _INVERT_ON
-			
+
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
 			struct Attributes
@@ -48,16 +48,16 @@
 			};
 
 			sampler2D _MainTex;
-			
+
 			Varyings WaterFXVertex (Attributes input)
 			{
 				Varyings output = (Varyings)0;
-				
+
 				VertexPositionInputs vertexPosition = GetVertexPositionInputs(input.positionOS.xyz);
                 VertexNormalInputs vertexTBN = GetVertexNormalInputs(input.normalOS, input.tangentOS);
-				
+
 				output.vertex = vertexPosition.positionCS;
-				
+
 				output.uv = input.uv;
 
 				output.color = input.color;
@@ -70,34 +70,32 @@
 
 				return output;
 			}
-			
+
 			half4 WaterFXFragment (Varyings input) : SV_Target
 			{
 				half4 col = tex2D(_MainTex, input.uv);
 
 				half foamMask = col.r * input.color.r;
-				half disp = col.a * 2 - 1;
-
-				disp *= input.color.a;
+				half disp = (col.a * 2 - 1) * input.color.a;
 
 				half3 tNorm = half3(col.b, col.g, 1) * 2 - 1;
 
-				half3 viewDir = half3(input.normal.w, input.tangent.w, input.bitangent.w);
+				//half3 viewDir = half3(input.normal.w, input.tangent.w, input.bitangent.w);
     			half3 normalWS = TransformTangentToWorld(tNorm, half3x3(input.tangent.xyz, input.bitangent.xyz, input.normal.xyz));
 
 				normalWS = lerp(half3(0, 1, 0), normalWS, input.color.g);
 				half4 comp = half4(foamMask, normalWS.xz, disp);
 
-				#ifdef _INVERT_ON
-				comp *= -1;
-				#endif
-
+			#ifdef _INVERT_ON
+				return -comp;
+			#else
 				return comp;
+			#endif
 			}
 			ENDHLSL
 		}
-		
-		Pass
+
+		/*Pass
         {
             Name "ShadowCaster"
             Tags{"LightMode" = "ShadowCaster"}
@@ -124,6 +122,6 @@
             #include "Packages/com.unity.render-pipelines.universal/Shaders/SimpleLitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/ShadowCasterPass.hlsl"
             ENDHLSL
-        }
+        }*/
 	}
 }

@@ -1,4 +1,4 @@
-﻿#ifndef WATER_INPUT_INCLUDED
+#ifndef WATER_INPUT_INCLUDED
 #define WATER_INPUT_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -13,8 +13,8 @@ half _WaveHeight;
 half _MaxDepth;
 half _MaxWaveHeight;
 half4 _BoatAttack_Water_DepthCamParams;
+float4x4 _InvViewProjection;
 half3 _SSR_Settings;
-half _CameraFov;
 
 #define SSR_STEP_SIZE _SSR_Settings.x
 #define SSR_THICKNESS _SSR_Settings.y
@@ -23,9 +23,9 @@ half _CameraFov;
 SAMPLER(sampler_ScreenTextures_point_clamp);
 #if defined(_REFLECTION_PLANARREFLECTION)
 TEXTURE2D(_PlanarReflectionTexture);
-#else
+/*#else
 TEXTURECUBE(_CubemapTexture);
-SAMPLER(sampler_CubemapTexture);
+SAMPLER(sampler_CubemapTexture);*/
 #endif
 TEXTURE2D(_WaterBufferA);
 TEXTURE2D(_WaterBufferB);
@@ -33,7 +33,7 @@ TEXTURE2D(_CameraDepthTexture);
 TEXTURE2D(_CameraOpaqueTexture); SAMPLER(sampler_ScreenTextures_linear_clamp);
 
 // Surface textures
-TEXTURE2D(_SurfaceNormals); SAMPLER(sampler_SurfaceNormals);
+TEXTURE2D(_SurfaceMap); SAMPLER(sampler_SurfaceMap);
 TEXTURE2D(_FoamMap); SAMPLER(sampler_FoamMap);
 TEXTURE2D(_DitherPattern); SAMPLER(sampler_DitherPattern); half4 _DitherPattern_TexelSize;
 
@@ -57,7 +57,7 @@ struct Varyings // fragment struct
 	float3	positionWS				: TEXCOORD1;	// world position of the vertices
 	float3 	normalWS 				: NORMAL;		// vert normals
 	float4 	viewDirectionWS 		: TEXCOORD2;	// view direction
-	float3	preWaveSP 				: TEXCOORD3;	// screen position of the verticies before wave distortion
+	float3	preWaveSP 				: TEXCOORD3;	// screen position of the vertices before wave distortion
 	half2 	fogFactorNoise          : TEXCOORD4;	// x: fogFactor, y: noise
 	float4	additionalData			: TEXCOORD5;	// x = distance surface to floor from view, y = distance to surface, z = normalized wave height, w = horizontal movement
 	float4	screenPosition			: TEXCOORD6;	// screen position after the waves
@@ -91,23 +91,23 @@ struct WaterInputData
     float3 normalWS;
     float3 viewDirectionWS;
     float2 reflectionUV;
-    float4 refractionUV;
+    float2 refractionUV;
     float4 detailUV;
-    float4 shadowCoord;
+    //float4 shadowCoord;
     half4 waterBufferA;
     half4 waterBufferB;
     half fogCoord;
-    float2 depth; // x = distorted depth, y = raw depth
+    float depth;
     half3 GI;
 	half3 screenNoise;
 };
 
 struct WaterLighting
 {
-    half3 driectLighting;
+    half3 directLighting;
     half3 ambientLighting;
     half3 sss;
-    half3 shadow;
+    //half3 shadow;
 };
 
 #endif // WATER_INPUT_INCLUDED

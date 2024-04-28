@@ -1,9 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using UnityEngine;
 using Unity.Mathematics;
-using UnityEngine.Rendering;
+using UnityEngine;
 using WaterSystem.Rendering;
 
 namespace WaterSystem
@@ -11,224 +8,120 @@ namespace WaterSystem
     public class Data
     {
         // Shader Keywords
-        private static readonly string KeyRefCubemap = "_REFLECTION_CUBEMAP";
-        private static readonly string KeyRefProbe = "_REFLECTION_PROBES";
-        private static readonly string KeyRefPlanar = "_REFLECTION_PLANARREFLECTION";
-        private static readonly string KeyRefSSR = "_REFLECTION_SSR";
+        private const string KeyRefCubemap = "_REFLECTION_CUBEMAP";
+        private const string KeyRefProbe = "_REFLECTION_PROBES";
+        private const string KeyRefPlanar = "_REFLECTION_PLANARREFLECTION";
+        private const string KeyRefSSR = "_REFLECTION_SSR";
 
         /// <summary>
-        /// The type of geometry, either vertex offset or tessellation
+        /// This class stores the settings for a water system
         /// </summary>
         [Serializable]
-        public enum GeometryType
+        public class OceanSettings
         {
-            VertexOffset,
-            //Tesselation,
-        }
-        
-        /// <summary>
-        /// Geometry settings
-        /// </summary>
-        [Serializable]
-        public class GeometrySettings
-        {
-            public GeometryType geometryType = GeometryType.VertexOffset;
-            public float density = 1;
-            public int maxDivisions = 5;
-        }
-        
-        /// <summary>
-        /// Refleciton settings, this also contains a planar reflection copy
-        /// </summary>
-        [Serializable]
-        public class ReflectionSettings
-        {
-            public Type reflectionType = Type.PlanarReflection; // How the reflections are generated
-            public Cubemap fallbackCubemap;
-            public PlanarReflections.PlanarReflectionSettings planarSettings = new(); // Planar reflection settings
-            public SsrSettings ssrSettings = new(); // SSR settings
+            // General
+            public ReflectionType refType = ReflectionType.ScreenSpaceReflection; // How the reflections are generated
+            public PlanarReflections.PlanarReflectionSettings planarSettings;
+            public SSRSettings SsrSettings = new SSRSettings();
+            public float distanceBlend = 100.0f;
+            public int randomSeed = 3234;
 
-            /// <summary>
-            /// The type of reflection source, custom cubemap, closest refelction probe, planar reflection
-            /// </summary>
-            [Serializable]
-            public enum Type
-            {
-                Cubemap,
-                ReflectionProbe,
-                PlanarReflection,
-                ScreenSpaceReflection,
-            }
+            // Cubemap settings
+            public Cubemap cubemapRefType;
+
+            // Visual Surface
+            public float _waterMaxVisibility = 5.0f;
+            public Color _absorptionColor = new Color(0.2f, 0.6f, 0.8f);
+            public Color _scatteringColor = new Color(0.0f, 0.085f, 0.1f);
+
+            // Waves
+            public bool _customWaves;
+            public BasicWaves _basicWaveSettings = new BasicWaves(0.5f, 45.0f, 5.0f);
+            public AnimationCurve _waveFoamProfile = AnimationCurve.Linear(0.02f, 0f, 0.98f, 1f);
+            public AnimationCurve _waveDepthProfile = AnimationCurve.Linear(0.0f, 1f, 0.98f, 0f);
+
+
+            // Micro(surface) Waves
+            public float _microWaveIntensity = 0.25f;
+
+            // Shore
+            public float _foamIntensity = 1.0f;
+            public AnimationCurve _shoreFoamProfile = AnimationCurve.Linear(0.02f, 1f, 0.98f, 0f);
         }
 
-        /// <summary>
-        /// SSR Reflection quality settings
-        /// </summary>
         [Serializable]
-        public class SsrSettings
+        public class SSRSettings
         {
-            public Steps steps = Steps.Medium;
+            public SSRSteps Steps = SSRSteps.Low; //SSRSteps.Medium;
             [Range(0.01f, 1f)]
-            public float stepSize = 0.1f;
+            public float StepSize = 0.15f; //0.1f;
             [Range(0.25f, 3f)]
-            public float thickness = 2f;
+            public float Thickness = 0.5f; //2f;
+        }
 
-            [Serializable]
-            public enum Steps
-            {
-                Low = 8,
-                Medium = 16,
-                High = 32,
-            }
-
-            // method to get the SSR settings packed into a float4
-            public float3 GetPacked()
-            {
-                return new float3(stepSize, thickness, 0);
-            }
+        [Serializable]
+        public enum SSRSteps
+        {
+            Low = 8,
+            Medium = 16,
+            High = 32,
         }
 
         /// <summary>
-        /// Lighting Settings
+        /// Basic wave type, this is for the base Gerstner wave values
+        /// it will drive automatic generation of n amount of waves
         /// </summary>
         [Serializable]
-        public class LightingSettings
+        public struct BasicWaves
         {
-            public LightingMode Mode = LightingMode.Basic;
-            public bool Soft = true;
-            public VolumeSample VolumeSamples = VolumeSample.Low;
+            [Range(3, 10)]
+            public int waveCount;
+            public float amplitude;
+            public float direction;
+            public float wavelength;
 
-            [Serializable]
-            public enum LightingMode
+            public BasicWaves(float amp, float dir, float len)
             {
-                Off,
-                Basic,
-                Volume,
-            }
-            
-            [Serializable]
-            public enum VolumeSample
-            {
-                Low = 4,
-                Medium = 8,
-                High = 16,
+                waveCount = 6;
+                amplitude = amp;
+                direction = dir;
+                wavelength = len;
             }
         }
 
         /// <summary>
-        /// Refraction Settings
+        /// The type of reflection source, custom cubemap, closest reflection probe, planar reflection
         /// </summary>
         [Serializable]
-        public class RefractionSettings
+        public enum ReflectionType
         {
-            public RefractionMode Mode = RefractionMode.Simple;
-            public bool Dispersion = false;
-		
-            public enum RefractionMode
-            {
-                Off,
-                Simple,
-                //Raymarch,
-            }
+            Cubemap,
+            ReflectionProbe,
+            ScreenSpaceReflection,
+            PlanarReflection,
         }
 
-        /// <summary>
-        /// Caustic Settings
-        /// </summary>
-        [Serializable]
-        public class CausticSettings
-        {
-            public CausticMode Mode = CausticMode.Simple;
-            public bool Dispersion = false;
-		
-            public enum CausticMode
-            {
-                Off,
-                Simple,
-                //Raymarch,
-            }
-        }
-        
-        /// <summary>
-        /// This is the struct that will be used to store the IWaterQuery sample and the GUID of the object it belongs to
-        /// </summary>
-        public struct WaterSample
-        {
-            /// <summary>
-            /// Data1.xyz = position, Data1.w = WaterBodyID, recommended to use methods to access this data.
-            /// </summary>
-            private float4 Data1;
-            /// <summary>
-            /// InstanceID of the IWaterQuery object this sample belongs to
-            /// </summary>
-            public int InstanceID;
-            
-            /// <summary>
-            /// Position of the sample in world space
-            /// </summary>
-            public float3 Position
-            {
-                get => Data1.xyz;
-                set => Data1.xyz = value;
-            }
-            
-            /// <summary>
-            /// WaterBodyID represents the InstanceID of the water body this sample is within
-            /// </summary>
-            public int WaterBodyID
-            {
-                get => (int)Data1.w;
-                set => Data1.w = value;
-            }
-        }
-        
-        /// <summary>
-        /// Struct to describe Water Surface
-        /// </summary>
-        public struct WaterSurface
-        {
-            public float3 Position;
-            public uint GUID;
-            public float3 Normal;
-            public float Depth;
-            public float2 Current;
-        }
-
-        public static string GetReflectionKeyword(ReflectionSettings.Type type)
+        public static string GetReflectionKeyword(ReflectionType type)
         {
             switch (type)
             {
-                case ReflectionSettings.Type.Cubemap:
+                case ReflectionType.Cubemap:
                     return KeyRefCubemap;
-                case ReflectionSettings.Type.ReflectionProbe:
+                case ReflectionType.ReflectionProbe:
                     return KeyRefProbe;
-                case ReflectionSettings.Type.PlanarReflection:
-                    return KeyRefPlanar;
-                case ReflectionSettings.Type.ScreenSpaceReflection:
+                case ReflectionType.ScreenSpaceReflection:
                     return KeyRefSSR;
+                case ReflectionType.PlanarReflection:
+                    return KeyRefPlanar;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }
         }
-        
-        [Serializable]
-        public enum DebugShading
+
+        public struct WaveOutputData
         {
-            none,
-            normalWS,
-            Reflection,
-            Refraction,
-            Specular,
-            SSS,
-            Shadow,
-            Foam,
-            FoamMask,
-            WaterBufferA,
-            WaterBufferB,
-            Depth,
-            WaterDepth,
-            Fresnel,
-            Mesh,
+            public float3 Position;
+            public float3 Normal;
         }
     }
 }

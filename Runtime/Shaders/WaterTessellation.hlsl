@@ -85,7 +85,7 @@ Varyings Domain( HS_ConstantOutput HSConstantData, const OutputPatch<Tessellatio
 	float fV = BarycentricCoords.y;
 	float fW = BarycentricCoords.z;
 
-	float4 vertex = input[0].positionOS * fU + input[1].positionOS * fV + input[2].positionOS * fW;
+	//float4 vertex = input[0].positionOS * fU + input[1].positionOS * fV + input[2].positionOS * fW;
 	output.uv = input[0].texcoord * fU + input[1].texcoord * fV + input[2].texcoord * fW;
 	output.positionWS = input[0].positionWS * fU + input[1].positionWS * fV + input[2].positionWS * fW;
 

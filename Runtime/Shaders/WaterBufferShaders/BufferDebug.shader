@@ -63,7 +63,7 @@ Shader "Boat Attack/Water/WaterBuffer/BufferDebug"
                 return output;
             }
 
-            Output frag (const Varyings input) : SV_Target
+            Output frag (const Varyings input)
             {
                 Output output;
                 // sample the texture

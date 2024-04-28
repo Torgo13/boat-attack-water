@@ -1,30 +1,16 @@
-﻿#ifndef WATER_LIGHTING_INCLUDED
+#ifndef WATER_LIGHTING_INCLUDED
 #define WATER_LIGHTING_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-#ifdef _SHADOW_SAMPLES_LOW
-    #define SHADOW_ITERATIONS 1
-    #define SHADOW_VOLUME
-#elif _SHADOW_SAMPLES_MEDIUM
-    #define SHADOW_ITERATIONS 2
-    #define SHADOW_VOLUME
-#elif _SHADOW_SAMPLES_HIGH
-    #define SHADOW_ITERATIONS 4
-    #define SHADOW_VOLUME
-#else
-    #define SHADOW_ITERATIONS 0
-#endif
+//#define SHADOW_ITERATIONS 4
 
-
-#ifdef _SSR_SAMPLES_LOW
-    #define SSR_ITERATIONS 8
+#ifdef _SSR_SAMPLES_HIGH
+    #define SSR_ITERATIONS 32
 #elif _SSR_SAMPLES_MEDIUM
     #define SSR_ITERATIONS 16
-#elif _SSR_SAMPLES_HIGH
-    #define SSR_ITERATIONS 32
 #else
-    #define SSR_ITERATIONS 4
+    #define SSR_ITERATIONS 8
 #endif
 
 half CalculateFresnelTerm(half3 normalWS, half3 viewDirectionWS, float distance)
@@ -71,36 +57,29 @@ half3 Highlights(half3 positionWS, half roughness, half3 normalWS, half3 viewDir
 }
 
 //Soft Shadows
-half SoftShadows(float2 screenUV, float3 positionWS, half3 viewDir, half depth)
+/*half SoftShadows(float2 screenUV, float3 positionWS, half3 viewDir, half depth)
 {
 #ifdef MAIN_LIGHT_CALCULATE_SHADOWS
-    float2 jitterUV = screenUV * _DitherPattern_TexelSize.xy;
-    half shadowBase = MainLightRealtimeShadow(TransformWorldToShadowCoord(positionWS)) * length(SampleMainLightCookie(positionWS));
-	half shadowAttenuation = shadowBase;
+    half2 jitterUV = screenUV * _ScreenParams.xy * _DitherPattern_TexelSize.xy;
+    half shadowBase = SAMPLE_TEXTURE2D_SHADOW(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture, TransformWorldToShadowCoord(positionWS));
+	half shadowAttenuation = 1 - (1-shadowBase) * 0.5;
 
-#ifdef SHADOW_VOLUME
 	float loopDiv = rcp(SHADOW_ITERATIONS);
-	float loopDivPlusOne = rcp(SHADOW_ITERATIONS + 1);
 	half depthFrac = depth * loopDiv;
-	half3 lightOffset = -viewDir * loopDiv * _MaxDepth;
+	half3 lightOffset = -viewDir;// * depthFrac;
 	for (uint i = 0u; i < SHADOW_ITERATIONS; ++i)
     {
 #ifndef _STATIC_SHADER
-        jitterUV += frac(float2(_Time.x, -_Time.z) + i * 0.09);
+        jitterUV += frac(half2(_Time.x, -_Time.z));
 #endif
-        float3 jitterTexture = SAMPLE_TEXTURE2D(_DitherPattern, sampler_DitherPattern, jitterUV * _ScreenParams.xy).xyz * 2 - 1;
-	    //half3 spread = jitterTexture.xzy * i * loopDiv * _MaxDepth;
-	    float3 lightJitter = positionWS + (lightOffset * (i + (_MaxDepth * loopDiv * 0.5) + jitterTexture.y));
-	    half3 spread = jitterTexture.xzy * distance(lightJitter, positionWS) * 0.1;
-	    lightJitter += spread;
-	    half shadow = SAMPLE_TEXTURE2D_SHADOW(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture, TransformWorldToShadowCoord(lightJitter)) * length(SampleMainLightCookie(lightJitter));
-	    float dist = distance(positionWS, lightJitter);
-	    shadow = dist > depth ? 1 : shadow;
-	    shadowAttenuation += shadow;
+        float3 jitterTexture = SAMPLE_TEXTURE2D(_DitherPattern, sampler_DitherPattern, jitterUV + i * _ScreenParams.xy).xyz * 2 - 1;
+	    half3 j = jitterTexture.xzy * i * 0.1;
+	    float3 lightJitter = (positionWS + j) + (lightOffset * (i + jitterTexture.y));
+	    half shadow = SAMPLE_TEXTURE2D_SHADOW(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture, TransformWorldToShadowCoord(lightJitter));
+	    shadowAttenuation *= 1 - ((1-shadow) * 0.5 * (i * loopDiv));
 	}
-    shadowAttenuation *= loopDivPlusOne;
-#endif
-    
+    shadowAttenuation = BEYOND_SHADOW_FAR(TransformWorldToShadowCoord(positionWS)) ? 1.0 : shadowAttenuation;
+
     //half fade = GetShadowFade(positionWS);
     half fade = GetMainLightShadowFade(positionWS);
 
@@ -108,7 +87,7 @@ half SoftShadows(float2 screenUV, float3 positionWS, half3 viewDir, half depth)
 #else
     return 1;
 #endif
-}
+}*/
 
 ///////////////////////////////////////////////////////////////////////////////
 //                           Reflection Modes                                //
@@ -116,7 +95,7 @@ half SoftShadows(float2 screenUV, float3 positionWS, half3 viewDir, half depth)
 
 float GetDepth(float2 uv)
 {
-    float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_ScreenTextures_point_clamp, uv);
+    float rawDepth = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, sampler_ScreenTextures_point_clamp, uv, 0);
 
     #if UNITY_REVERSED_Z
     return rawDepth;
@@ -138,42 +117,31 @@ float2 ViewSpacePosToUV(float3 pos)
     return ComputeNormalizedDeviceCoordinates(pos, UNITY_MATRIX_P);
 }
 
-void RayMarch(float3 origin, float3 direction, out half2 sampleUV, out half valid, out half debug)
+half RayMarch(float3 origin, float3 direction, out half2 sampleUV)
 {
-    sampleUV = 0;
-    valid = 0;
-    debug = 0;
-
-    float3 baseOrigin = origin;
-    
     direction *= SSR_STEP_SIZE;
-    const int rcpStepCount = rcp(SSR_ITERATIONS);
     
     [loop]
     for(int i = 0; i < SSR_ITERATIONS; i++)
     {
-        debug++;
-        {
-            origin += direction;
-            direction *= 2;
-            sampleUV = ViewSpacePosToUV(origin);
-
+        origin += direction;
+        direction *= 2;
+        sampleUV = ViewSpacePosToUV(origin);
             
-            if(!(sampleUV.x > 1 || sampleUV.x < 0 || sampleUV.y > 1 || sampleUV.y < 0))
-            {
-                float deviceDepth = GetDepth(sampleUV);
-                float3 samplePos = ViewPosFromDepth(sampleUV, deviceDepth);
+        if(sampleUV.x > 1 || sampleUV.x < 0 || sampleUV.y > 1 || sampleUV.y < 0) { break; }
 
-                if(distance(samplePos.z, origin.z) > length(direction) * SSR_THICKNESS) continue;
+        float deviceDepth = GetDepth(sampleUV); if (!deviceDepth) continue;
+        float3 samplePos = ViewPosFromDepth(sampleUV, deviceDepth);
+
+        if(distance(samplePos.z, origin.z) > length(direction) * SSR_THICKNESS) continue;
         
-                if(samplePos.z > origin.z)
-                {
-                    valid = 1;
-                    return;
-                }
-            }
+        if(samplePos.z > origin.z)
+        {
+            return half(1);
         }
     }
+
+    return half(0);
 }
 
 half3 CubemapReflection(float3 viewDirectionWS, float3 positionWS, float3 normalWS)
@@ -184,40 +152,33 @@ half3 CubemapReflection(float3 viewDirectionWS, float3 positionWS, float3 normal
 
 half3 SampleReflections(float3 normalWS, float3 positionWS, float3 viewDirectionWS, half2 screenUV)
 {
-    half3 reflection = 0;
-    half2 refOffset = 0;
+    half3 reflection = GlossyEnvironmentReflection(reflect(-viewDirectionWS, normalWS), 0, 1); //CubemapReflection(viewDirectionWS, positionWS, normalWS);
+    //half2 refOffset = 0;
     
-#if _REFLECTION_CUBEMAP
+/*#if _REFLECTION_CUBEMAP
     half3 reflectVector = reflect(-viewDirectionWS, normalWS);
-    reflection = SAMPLE_TEXTURECUBE_LOD(_CubemapTexture, sampler_CubemapTexture, reflectVector, 0).rgb;
-#elif _REFLECTION_PROBES
-    reflection = CubemapReflection(viewDirectionWS, positionWS, normalWS);
+    reflection = SAMPLE_TEXTURECUBE_LOD(_CubemapTexture, sampler_CubemapTexture, reflectVector, 0).rgb;*/
+#if _REFLECTION_PROBES
+    //reflection = CubemapReflection(viewDirectionWS, positionWS, normalWS);
 #elif _REFLECTION_PLANARREFLECTION
-    // get the perspective projection
-    float2 p11_22 = float2(unity_CameraInvProjection._11, unity_CameraInvProjection._22) * 10;
-    // convert the uvs into view space by "undoing" projection
-    float3 viewDir = -(float3((screenUV * 2 - 1) / p11_22, -1));
+    half2 reflectionUV = screenUV + half2(normalWS.zx) * half2(0.05, 0.2);
+    half4 reflectionRGBA = SAMPLE_TEXTURE2D(_PlanarReflectionTexture, sampler_ScreenTextures_linear_clamp, reflectionUV);//planar reflection
 
-    half3 viewNormal = mul(normalWS, (float3x3)GetWorldToViewMatrix()).xyz;
-    half3 reflectVector = reflect(-viewDir, viewNormal);
-
-    half2 reflectionUV = screenUV + normalWS.zx * half2(0.05, 0.2);
-    reflection += SAMPLE_TEXTURE2D(_PlanarReflectionTexture, sampler_ScreenTextures_linear_clamp, reflectionUV).rgb;//planar reflection
-#elif _REFLECTION_SSR
-    float2 uv = float2(0, 0);
-    half valid = 1;
+    //half3 backup = CubemapReflection(viewDirectionWS, positionWS, normalWS);
+    reflection = lerp(reflection, reflectionRGBA.rgb, reflectionRGBA.a);
+//#elif _REFLECTION_SSR
+#else
+    half2 uv;
 
     float3 positionVS = TransformWorldToView(positionWS);
     float3 normalVS = TransformWorldToViewDir(normalWS);
-
-    float3 positionVSnorm = normalize(positionVS);
+    
     float3 pivot = reflect(positionVS, normalVS);
-    half debug;
-    RayMarch(positionVS, pivot, uv, valid, debug);
+    half valid = RayMarch(positionVS, pivot, uv);
     half3 ssr = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_ScreenTextures_linear_clamp, uv).rgb;
 
-    half3 backup = CubemapReflection(viewDirectionWS, positionWS, normalWS);
-    reflection = lerp(backup, ssr, valid);
+    //half3 backup = CubemapReflection(viewDirectionWS, positionWS, normalWS);
+    reflection = lerp(reflection, ssr, valid);
 #endif
     //do backup
     return reflection;

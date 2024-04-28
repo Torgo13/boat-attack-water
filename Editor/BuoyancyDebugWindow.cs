@@ -1,8 +1,8 @@
+using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 using WaterSystem;
-using WaterSystem.Settings;
-using WaterSystem.Physics;
 
 public class BuoyancyDebugWindow : EditorWindow
 {
@@ -12,33 +12,31 @@ public class BuoyancyDebugWindow : EditorWindow
     private static void Init()
     {
         // Get existing open window or if none, make a new one:
-        var window = (BuoyancyDebugWindow)GetWindow(typeof(BuoyancyDebugWindow));
+        BuoyancyDebugWindow window = (BuoyancyDebugWindow)GetWindow(typeof(BuoyancyDebugWindow));
         window.Show();
     }
 
-    
     private void OnGUI()
     {
         EditorGUILayout.LabelField("URP Water System : Buoyancy Debug", EditorStyles.largeLabel);
 
-        var unusedCount = ProjectSettings.Quality.BuoyancySamples - WaterPhysics.ActiveSampleCount;
         EditorGUILayout.HelpBox(
-            $"Total Objects:{BaseSystem.GetInstance<WaterPhysics>().QueryRegistry.Count}   " +
-            $"Sample Point Count:{WaterPhysics.ActiveSampleCount}   " +
-            $"Unused:{unusedCount}", 
+            $"Total Objects:{GerstnerWavesJobs.Registry.Count} Sample Point Count:{GerstnerWavesJobs._positionCount}",
             MessageType.None);
 
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
         _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-        var count = 0;
-        foreach (var registryEntry in (BaseSystem.GetInstance<WaterPhysics>().QueryRegistry))
+        int count = 0;
+        foreach (KeyValuePair<int, int2> registryEntry in GerstnerWavesJobs.Registry)
         {
-            if(registryEntry.Key == null) continue;
-            var obj = registryEntry.Key;
-            var box = EditorGUILayout.BeginHorizontal();
-            if(count % 2 == 0)
+            Object obj = EditorUtility.InstanceIDToObject(registryEntry.Key);
+            Rect box = EditorGUILayout.BeginHorizontal();
+            if (count % 2 == 0)
+            {
                 GUI.Box(box, GUIContent.none);
-            EditorGUILayout.LabelField($"{obj.name}", $"GUID:{registryEntry.Key.GetInstanceID()}");
+            }
+
+            EditorGUILayout.LabelField($"{obj.name}", $"GUID:{registryEntry.Key}");
             EditorGUILayout.LabelField($"indicies:{registryEntry.Value.x}-{registryEntry.Value.y}",
                 $"size:{registryEntry.Value.y - registryEntry.Value.x}");
             if (GUILayout.Button("Ping Object"))
