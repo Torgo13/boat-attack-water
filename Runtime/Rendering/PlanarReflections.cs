@@ -5,6 +5,9 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+#if !CUSTOM_URP
+using System.Reflection;
+#endif
 #pragma warning disable CS0618 // Type or member is obsolete
 
 namespace WaterSystem.Rendering
@@ -61,6 +64,41 @@ namespace WaterSystem.Rendering
         public static event Action<ScriptableRenderContext, Camera> BeginPlanarReflections;
 
         private static VolumetricCloudsURP volumetricCloudsURP;
+        private static bool volumetricCloudsURPFound = false;
+
+        private static UniversalRenderPipelineAsset _universalRenderPipelineAsset;
+        private static UniversalRenderPipelineAsset UniversalRenderPipelineAsset { get { if (_universalRenderPipelineAsset == null) { _universalRenderPipelineAsset = (UniversalRenderPipelineAsset)GraphicsSettings.currentRenderPipeline; } return _universalRenderPipelineAsset; } }
+
+#if !CUSTOM_URP
+        private static System.Type _universalRenderPipelineAssetType;
+        private static System.Type UniversalRenderPipelineAssetType { get { if (_universalRenderPipelineAssetType == null) { _universalRenderPipelineAssetType = UniversalRenderPipelineAsset.GetType(); } return _universalRenderPipelineAssetType; } }
+
+        private static FieldInfo _renderDataListFieldInfo;
+        private static FieldInfo RenderDataListFieldInfo { get { if (_renderDataListFieldInfo == null) { _renderDataListFieldInfo = UniversalRenderPipelineAssetType.GetField("m_RendererDataList", BindingFlags.Instance | BindingFlags.NonPublic); } return _renderDataListFieldInfo; } }
+#endif
+
+        private static ScriptableRendererData[] _renderData;
+        private static ScriptableRendererData RenderData
+        {
+            get
+            {
+                bool renderDataFound = _renderData != null;
+                if (!renderDataFound)
+                {
+#if !CUSTOM_URP
+                    _renderData = (ScriptableRendererData[])RenderDataListFieldInfo.GetValue(UniversalRenderPipelineAsset);
+#else
+                    _renderData = UniversalRenderPipelineAsset.m_RendererDataList;
+#endif
+                    renderDataFound = _renderData != null;
+                }
+                if (renderDataFound && _renderData.Length > 0)
+                {
+                    return _renderData[0];
+                }
+                return null;
+            }
+        }
 
         public static void Cleanup()
         {
@@ -111,17 +149,16 @@ namespace WaterSystem.Rendering
                 _reflectionObjects[realCamera].Camera = CreateMirrorObjects();
 
                 // Get the VolumetricCloudsURP renderer feature to disable it before rendering
-                /*UniversalRenderPipelineAsset urpAsset = (UniversalRenderPipelineAsset)GraphicsSettings.currentRenderPipeline;
-                FieldInfo RenderDataList_FieldInfo = urpAsset.GetType().GetField("m_RendererDataList", BindingFlags.Instance | BindingFlags.NonPublic);
-                ScriptableRendererData[] renderDataList = (ScriptableRendererData[])RenderDataList_FieldInfo.GetValue(urpAsset);*/
-                ScriptableRendererData[] renderDataList = ((UniversalRenderPipelineAsset)GraphicsSettings.currentRenderPipeline).m_RendererDataList;
-                List<ScriptableRendererFeature> features = renderDataList[0].rendererFeatures;
-                foreach (var rendererFeature in features)
+                if (!volumetricCloudsURPFound && RenderData != null)
                 {
-                    if (rendererFeature is VolumetricCloudsURP volumetricCloudsFeature)
+                    foreach (var rendererFeature in RenderData.rendererFeatures)
                     {
-                        volumetricCloudsURP = volumetricCloudsFeature;
-                        break;
+                        if (rendererFeature is VolumetricCloudsURP volumetricCloudsFeature)
+                        {
+                            volumetricCloudsURP = volumetricCloudsFeature;
+                            volumetricCloudsURPFound = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -279,17 +316,26 @@ namespace WaterSystem.Rendering
             UpdateReflectionObjects(camera);
 
             GL.invertCulling = true;
-            volumetricCloudsURP.SetActive(false);
+            if (volumetricCloudsURPFound)
+            {
+                volumetricCloudsURP.SetActive(false);
+            }
 
             // callback Action for PlanarReflection
-            if (BeginPlanarReflections != null) { BeginPlanarReflections(context, _reflectionObjects[camera].Camera); }
+            if (BeginPlanarReflections != null)
+            {
+                BeginPlanarReflections(context, _reflectionObjects[camera].Camera);
+            }
 
             //Debug.LogError(UniversalRenderPipeline.SupportsRenderRequest(_reflectionObjects[camera].Camera, typeof(UniversalRenderPipeline.SingleCameraRequest)));
             //UniversalRenderPipeline.SubmitRenderRequest(_reflectionObjects[camera].Camera, typeof(UniversalRenderPipeline.SingleCameraRequest));
             UniversalRenderPipeline.RenderSingleCamera(context, _reflectionObjects[camera].Camera); // render planar reflections
 
             GL.invertCulling = false;
-            volumetricCloudsURP.SetActive(true);
+            if (volumetricCloudsURPFound)
+            {
+                volumetricCloudsURP.SetActive(true);
+            }
 
             Shader.SetGlobalTexture(_planarReflectionTextureId, _reflectionObjects[camera].Texture); // Assign texture to water shader
         }
