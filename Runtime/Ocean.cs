@@ -379,18 +379,19 @@ namespace WaterSystem
                 }
             }
 
-            Shader.SetGlobalInt(WaveCount, GerstnerWavesJobs._waveData.Length);
+            int waveCount = GerstnerWavesJobs._waveData.Length;
+            Shader.SetGlobalInt(WaveCount, waveCount);
 
             //GPU side
-            if (_useComputeBuffer && WaveCount * 12 <= SystemInfo.maxGraphicsBufferSize)
+            if (_useComputeBuffer && waveCount * 12 <= SystemInfo.maxGraphicsBufferSize)
             {
                 Shader.EnableKeyword(USE_STRUCTURED_BUFFER);
                 if (waveBuffer != null)
                 {
                     waveBuffer.Dispose();
                 }
-                //waveBuffer = new ComputeBuffer(WaveCount, Unity.Collections.LowLevel.Unsafe.UnsafeUtility.SizeOf<Data.Wave>());
-                waveBuffer = new ComputeBuffer(WaveCount, 12); // Data.Wave has 3 floats
+                //waveBuffer = new ComputeBuffer(waveCount, Unity.Collections.LowLevel.Unsafe.UnsafeUtility.SizeOf<Data.Wave>());
+                waveBuffer = new ComputeBuffer(waveCount, 12); // Data.Wave has 3 floats
                 waveBuffer.SetData(GerstnerWavesJobs._waveData);
                 Shader.SetGlobalBuffer(WaveDataBuffer, waveBuffer);
             }
