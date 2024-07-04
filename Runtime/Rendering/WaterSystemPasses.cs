@@ -10,6 +10,8 @@ namespace WaterSystem.Rendering
     {
         private const string m_BufferATexture = "_WaterBufferA";
         private const string m_BufferBTexture = "_WaterBufferB";
+        static readonly int WaterBufferA = Shader.PropertyToID(m_BufferATexture);
+        static readonly int WaterBufferB = Shader.PropertyToID(m_BufferBTexture);
         private const string m_BufferDepthTexture = "_WaterBufferDepth";
 
 #if UNITY_2022_1_OR_NEWER
@@ -52,13 +54,11 @@ namespace WaterSystem.Rendering
             RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetDepth, td, FilterMode.Bilinear, name: m_BufferDepthTexture);
             multiTargets[0] = m_BufferTargetA;
             multiTargets[1] = m_BufferTargetB;
-            cmd.SetGlobalTexture(m_BufferATexture, m_BufferTargetA.nameID);
-            cmd.SetGlobalTexture(m_BufferBTexture, m_BufferTargetB.nameID);
+            cmd.SetGlobalTexture(WaterBufferA, m_BufferTargetA.nameID);
+            cmd.SetGlobalTexture(WaterBufferB, m_BufferTargetB.nameID);
 #else
-            m_BufferTargetA = Shader.PropertyToID(m_BufferATexture);
-            m_BufferTargetB = Shader.PropertyToID(m_BufferBTexture);
-            cmd.GetTemporaryRT(m_BufferTargetA, td, FilterMode.Bilinear);
-            cmd.GetTemporaryRT(m_BufferTargetB, td, FilterMode.Bilinear);
+            cmd.GetTemporaryRT(WaterBufferA, td, FilterMode.Bilinear);
+            cmd.GetTemporaryRT(WaterBufferB, td, FilterMode.Bilinear);
             RenderTargetIdentifier[] multiTargets = { m_BufferTargetA, m_BufferTargetB };
 #endif
             ConfigureTarget(multiTargets, m_BufferTargetDepth);
