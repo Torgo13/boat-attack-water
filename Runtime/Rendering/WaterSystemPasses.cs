@@ -114,7 +114,7 @@ namespace WaterSystem.Rendering
 
     #region InfiniteWater Pass
 
-    /*public class InfiniteWaterPass : ScriptableRenderPass
+    public class InfiniteWaterPass : ScriptableRenderPass
     {
         private Mesh infiniteMesh;
         private Shader infiniteShader;
@@ -170,7 +170,7 @@ namespace WaterSystem.Rendering
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }
-    }*/
+    }
 
     #endregion
 

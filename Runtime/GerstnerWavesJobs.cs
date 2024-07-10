@@ -16,7 +16,6 @@ namespace WaterSystem
         public static bool Initialized;
         private static bool _firstFrame = true;
         private static bool _processing;
-        //public static int _waveCount;
         private static int threadCount;
         public static NativeArray<float3> _waveData; // Wave data from the water system
 
@@ -36,8 +35,6 @@ namespace WaterSystem
         private static NativeArray<float> _opacity, /*_waterDepth,*/ _depthProfile;
 
         // Job handles
-        //private static JobHandle _waterDepthHandle;
-        //private static JobHandle _opacityHandle;
         private static JobHandle _waterHeightHandle;
 
         /// <summary>
@@ -45,15 +42,8 @@ namespace WaterSystem
         /// </summary>
         public static readonly Dictionary<int, int2> Registry = new Dictionary<int, int2>();
 
-        //Details for cameras
-        //private static NativeArray<float3> _camPositions;
-        //private static readonly Dictionary<Camera, float3> CamRegistry = new Dictionary<Camera, float3>();
-
         public static void Init()
         {
-            /*if(Debug.isDebugBuild)
-              Debug.Log("Initializing Gerstner Waves Jobs");*/
-
             //Wave data
             Ocean ocean = Ocean.Instance;
             if (ocean == null)
@@ -61,10 +51,7 @@ namespace WaterSystem
                 return;
             }
 
-            //_waveCount = ocean.waves.Length;
-            //_waveData = new NativeArray<float3>(_waveCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-
-            // Max sample count for quality level - TODO need to make sure switching quality levels works
+            // Max sample count for quality level
             const int sampleCount = 4096;
             _samplePositionsA = new NativeArray<float3>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             _samplePositionsB = new NativeArray<float3>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -73,7 +60,6 @@ namespace WaterSystem
             _gerstnerWavesB = new NativeArray<Data.WaveOutputData>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             _opacity = new NativeArray<float>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            //_waterDepth = new NativeArray<float>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             const int depthProfileCount = 32;
             _depthProfile = new NativeArray<float>(depthProfileCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -89,8 +75,6 @@ namespace WaterSystem
 
         public static void Cleanup()
         {
-            /*if(Debug.isDebugBuild)
-              Debug.Log("Cleaning up Gerstner Wave Jobs");*/
             _waterHeightHandle.Complete();
 
             DepthGenerator.CleanUp();
@@ -125,8 +109,7 @@ namespace WaterSystem
             {
                 _opacity.Dispose();
             }
-            /*if (_waterDepth.IsCreated)
-                _waterDepth.Dispose();*/
+
             if (_depthProfile.IsCreated)
             {
                 _depthProfile.Dispose();
@@ -213,26 +196,6 @@ namespace WaterSystem
             float t = Application.isPlaying ? Time.time : Time.realtimeSinceStartup;
 #endif
 
-            // Test Water Depth
-            /*DepthGenerator.WaterDepth waterDepth = new DepthGenerator.WaterDepth
-            {
-                Position = _samplePositionsA,
-                DepthData = DepthGenerator._depthData,
-                DepthValues = DepthGenerator._globalDepthValues,
-                Depth = _waterDepth,
-            };
-            _waterDepthHandle = waterDepth.Schedule(_positionCount, threadCount);*/
-
-            // Generate Opacity Values
-            /*OpacityJob opacity = new OpacityJob
-            {
-                DepthProfile = _depthProfile,
-                //DepthValues = _waterDepth,
-                Opacity = _opacity,
-            };
-
-            _opacityHandle = opacity.Schedule(_positionCount, threadCount);*/
-
             // Gerstner Wave Height
             float offset = Ocean.Instance.transform.position.y;
             HeightJob waterHeight = new HeightJob
@@ -285,9 +248,9 @@ namespace WaterSystem
             [ReadOnly] public NativeArray<float> Opacity;
 
             // The code actually running on the job
-            public void Execute(int i)
+            public void Execute(int index)
             {
-                if (i < OffsetLength.x || i >= OffsetLength.y - OffsetLength.x)
+                if (index < OffsetLength.x || index >= OffsetLength.y - OffsetLength.x)
                 {
                     return;
                 }
@@ -300,7 +263,7 @@ namespace WaterSystem
                 for (int wave = 0; wave < waveDataLength; wave++) // for each wave
                 {
                     // Wave data vars
-                    float2 pos = Position[i].xz;
+                    float2 pos = Position[index].xz;
 
                     float amplitude = WaveData[wave].x;
                     float direction = math.radians(WaveData[wave].y); // convert the incoming degrees to radians
@@ -312,8 +275,6 @@ namespace WaterSystem
 
                     math.sincos(direction, out var directionSin, out var directionCos);
                     float2 windDir = new float2(directionCos, directionSin); // calculate wind direction
-
-                    //windDir = math.normalize(windDir);
                     float dir = math.dot(windDir, pos);
 
                     ////////////////////////////position output calculations/////////////////////////
@@ -331,31 +292,16 @@ namespace WaterSystem
 
                 Data.WaveOutputData output = new Data.WaveOutputData();
 
-                wavePos *= math.saturate(Opacity[i]);
-                wavePos.xz += Position[i].xz;
+                wavePos *= math.saturate(Opacity[index]);
+                wavePos.xz += Position[index].xz;
                 wavePos.y += WaveLevelOffset;
                 output.Position = wavePos;
 
-                waveNorm.xy *= Opacity[i];
+                waveNorm.xy *= Opacity[index];
                 output.Normal = math.normalize(waveNorm.xzy);
 
-                Output[i] = output;
+                Output[index] = output;
             }
         }
-
-        /*[BurstCompile]
-        private struct OpacityJob : IJobParallelFor
-        {
-            //[ReadOnly] public NativeArray<float> DepthValues;
-            [ReadOnly] public NativeArray<float> DepthProfile;
-
-            [WriteOnly] public NativeArray<float> Opacity;
-
-            public void Execute(int index)
-            {
-                int length = DepthProfile.Length;
-                Opacity[index] = math.saturate(math.pow(DepthProfile[(int)math.round(math.clamp((1.0f  - math.saturate(-DepthValues[index] / 20.0f)) * length, 0.0f, length - 1f))], 0.4545f));
-            }
-        }*/
     }
 }

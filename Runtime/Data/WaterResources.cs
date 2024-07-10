@@ -16,8 +16,8 @@ namespace WaterSystem
         public Texture2D ditherNoise; // blue noise normal map
         public Material defaultSeaMaterial;
         public Mesh[] defaultWaterMeshes;
-        //public Mesh defaultInfiniteWaterMesh;
+        public Mesh defaultInfiniteWaterMesh;
         public Material causticMaterial;
-        //public Shader infiniteWaterShader;
+        public Shader infiniteWaterShader;
     }
 }

@@ -64,7 +64,7 @@ namespace WaterSystem.Rendering
         public static event Action<ScriptableRenderContext, Camera> BeginPlanarReflections;
 
         private static VolumetricCloudsURP volumetricCloudsURP;
-        private static bool volumetricCloudsURPFound = false;
+        private static bool volumetricCloudsURPFound;
 
         private static UniversalRenderPipelineAsset _universalRenderPipelineAsset;
         private static UniversalRenderPipelineAsset UniversalRenderPipelineAsset { get { if (_universalRenderPipelineAsset == null) { _universalRenderPipelineAsset = (UniversalRenderPipelineAsset)GraphicsSettings.currentRenderPipeline; } return _universalRenderPipelineAsset; } }
@@ -289,9 +289,9 @@ namespace WaterSystem.Rendering
             //bool useHdr10 = RenderingUtils.SupportsRenderTextureFormat(RenderTextureFormat.RGB111110Float);
             //RenderTextureFormat hdrFormat = useHdr10 ? RenderTextureFormat.RGB111110Float : RenderTextureFormat.DefaultHDR;
 #if UNITY_ANDROID || UNITY_IOS
-            RenderTextureFormat hdrFormat = RenderTextureFormat.ARGBHalf;
+            const RenderTextureFormat hdrFormat = RenderTextureFormat.ARGBHalf;
 #else
-            RenderTextureFormat hdrFormat = RenderTextureFormat.ARGBFloat;
+            const RenderTextureFormat hdrFormat = RenderTextureFormat.ARGBFloat;
 #endif
             return RenderTexture.GetTemporary(res.x, res.y, 0, GraphicsFormatUtility.GetGraphicsFormat(hdrFormat, true));
         }

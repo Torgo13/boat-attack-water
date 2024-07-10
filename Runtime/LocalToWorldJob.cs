@@ -5,94 +5,99 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
-public static class LocalToWorldJob
+namespace WaterSystem
 {
-    private static readonly Dictionary<int, TransformLocalToWorld> Data = new Dictionary<int, TransformLocalToWorld>();
-
-    [BurstCompile]
-    struct LocalToWorldConvertJob : IJob
+    public static class LocalToWorldJob
     {
-        [WriteOnly] public NativeArray<float3> PositionsWorld;
-        [ReadOnly] public Matrix4x4 Matrix;
-        [ReadOnly] public NativeArray<float3> PositionsLocal;
+        private static readonly Dictionary<int, TransformLocalToWorld> Data =
+            new Dictionary<int, TransformLocalToWorld>();
 
-        // The code actually running on the job
-        public void Execute()
+        [BurstCompile]
+        struct LocalToWorldConvertJob : IJob
         {
-            int PositionsLocalCount = PositionsLocal.Length;
-            for (int i = 0; i < PositionsLocalCount; i++)
+            [WriteOnly] public NativeArray<float3> PositionsWorld;
+            [ReadOnly] public Matrix4x4 Matrix;
+            [ReadOnly] public NativeArray<float3> PositionsLocal;
+
+            // The code actually running on the job
+            public void Execute()
             {
-                float4 pos = float4.zero;
-                pos.xyz = PositionsLocal[i];
-                pos.w = 1f;
-                pos = Matrix * pos;
-                PositionsWorld[i] = pos.xyz;
+                int PositionsLocalCount = PositionsLocal.Length;
+                for (int i = 0; i < PositionsLocalCount; i++)
+                {
+                    float4 pos = float4.zero;
+                    pos.xyz = PositionsLocal[i];
+                    pos.w = 1f;
+                    pos = Matrix * pos;
+                    PositionsWorld[i] = pos.xyz;
+                }
             }
         }
-    }
 
-    public static void SetupJob(int guid, Vector3[] positions, ref NativeArray<float3> output)
-    {
-        int positionsCount = positions.Length;
-
-        TransformLocalToWorld jobData = new TransformLocalToWorld
+        public static void SetupJob(int guid, Vector3[] positions, ref NativeArray<float3> output)
         {
-            PositionsWorld = output,
-            PositionsLocal = new NativeArray<float3>(positionsCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory)
-        };
+            int positionsCount = positions.Length;
 
-        for (int i = 0; i < positionsCount; i++)
-        {
-            jobData.PositionsLocal[i] = positions[i];
+            TransformLocalToWorld jobData = new TransformLocalToWorld
+            {
+                PositionsWorld = output,
+                PositionsLocal = new NativeArray<float3>(positionsCount, Allocator.Persistent,
+                    NativeArrayOptions.UninitializedMemory)
+            };
+
+            for (int i = 0; i < positionsCount; i++)
+            {
+                jobData.PositionsLocal[i] = positions[i];
+            }
+
+            Data.Add(guid, jobData);
         }
 
-        Data.Add(guid, jobData);
-    }
-
-    public static void ScheduleJob(int guid, Matrix4x4 localToWorld)
-    {
-        if (Data[guid].Processing)
+        public static void ScheduleJob(int guid, Matrix4x4 localToWorld)
         {
-            return;
+            if (Data[guid].Processing)
+            {
+                return;
+            }
+
+            Data[guid].Job = new LocalToWorldConvertJob
+            {
+                PositionsWorld = Data[guid].PositionsWorld,
+                PositionsLocal = Data[guid].PositionsLocal,
+                Matrix = localToWorld
+            };
+
+            Data[guid].Handle = Data[guid].Job.Schedule();
+            Data[guid].Processing = true;
+            JobHandle.ScheduleBatchedJobs();
         }
 
-        Data[guid].Job = new LocalToWorldConvertJob
+        public static void CompleteJob(int guid)
         {
-            PositionsWorld = Data[guid].PositionsWorld,
-            PositionsLocal = Data[guid].PositionsLocal,
-            Matrix = localToWorld
-        };
-
-        Data[guid].Handle = Data[guid].Job.Schedule();
-        Data[guid].Processing = true;
-        JobHandle.ScheduleBatchedJobs();
-    }
-
-    public static void CompleteJob(int guid)
-    {
-        Data[guid].Handle.Complete();
-        Data[guid].Processing = false;
-    }
-
-    public static void Cleanup(int guid)
-    {
-        if (!Data.ContainsKey(guid))
-        {
-            return;
+            Data[guid].Handle.Complete();
+            Data[guid].Processing = false;
         }
 
-        Data[guid].Handle.Complete();
-        Data[guid].PositionsWorld.Dispose();
-        Data[guid].PositionsLocal.Dispose();
-        Data.Remove(guid);
-    }
+        public static void Cleanup(int guid)
+        {
+            if (!Data.TryGetValue(guid, out TransformLocalToWorld value))
+            {
+                return;
+            }
 
-    class TransformLocalToWorld
-    {
-        public NativeArray<float3> PositionsLocal;
-        public NativeArray<float3> PositionsWorld;
-        public JobHandle Handle;
-        public LocalToWorldConvertJob Job;
-        public bool Processing;
+            value.Handle.Complete();
+            value.PositionsWorld.Dispose();
+            value.PositionsLocal.Dispose();
+            Data.Remove(guid);
+        }
+
+        class TransformLocalToWorld
+        {
+            public NativeArray<float3> PositionsLocal;
+            public NativeArray<float3> PositionsWorld;
+            public JobHandle Handle;
+            public LocalToWorldConvertJob Job;
+            public bool Processing;
+        }
     }
 }

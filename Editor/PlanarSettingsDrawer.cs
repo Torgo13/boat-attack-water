@@ -56,7 +56,7 @@ namespace WaterSystem.Rendering
             EditorGUI.PropertyField(EditorGUILayout.GetControlRect(true), layerMask);
             EditorGUI.PropertyField(EditorGUILayout.GetControlRect(true), shadows);
             EditorGUI.PropertyField(EditorGUILayout.GetControlRect(true), obliqueProjection);
-            if (obliqueProjection.boolValue == false)
+            if (!obliqueProjection.boolValue)
             {
                 EditorGUILayout.HelpBox(
                     "Disabling Oblique Projection will lead to objects refelcting below the water," +

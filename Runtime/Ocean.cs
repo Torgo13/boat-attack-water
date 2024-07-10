@@ -25,8 +25,8 @@ namespace WaterSystem
             {
                 if (_instance == null)
                 {
-#if UNITY_2023_1_OR_NEWER
-                    _instance = (Ocean)FindFirstObjectByType(typeof(Ocean));
+#if UNITY_2022_3_OR_NEWER
+                    _instance = FindFirstObjectByType<Ocean>();
 #else
                     _instance = FindObjectOfType<Ocean>();
 #endif
@@ -50,7 +50,8 @@ namespace WaterSystem
         public DebugShading shadingDebug;
 
         // Render Passes
-        //private InfiniteWaterPass _infiniteWaterPass;
+        public bool infiniteWater;
+        private InfiniteWaterPass _infiniteWaterPass;
         private WaterFxPass _waterBufferPass;
         private WaterCausticsPass _causticsPass;
 
@@ -137,7 +138,7 @@ namespace WaterSystem
             }
 
             // pass cleanup
-            //_infiniteWaterPass = null;
+            _infiniteWaterPass = null;
 
             if (_waterBufferPass != null)
             {
@@ -178,7 +179,10 @@ namespace WaterSystem
                 _causticMaterial.SetTexture(CausticMap, resources.defaultSurfaceMap);
             }
 
-            //_infiniteWaterPass ??= new InfiniteWaterPass(resources.defaultInfiniteWaterMesh, resources.infiniteWaterShader);
+            if (infiniteWater && _infiniteWaterPass == null)
+            {
+                _infiniteWaterPass = new InfiniteWaterPass(resources.defaultInfiniteWaterMesh, resources.infiniteWaterShader);
+            }
             if (_waterBufferPass == null)
             {
                 _waterBufferPass = new WaterFxPass();
@@ -189,7 +193,10 @@ namespace WaterSystem
             }
 
             UniversalAdditionalCameraData urpData = cam.GetUniversalAdditionalCameraData();
-            //urpData.scriptableRenderer.EnqueuePass(_infiniteWaterPass);
+            if (infiniteWater)
+            {
+                urpData.scriptableRenderer.EnqueuePass(_infiniteWaterPass);
+            }
             urpData.scriptableRenderer.EnqueuePass(_waterBufferPass);
             urpData.scriptableRenderer.EnqueuePass(_causticsPass);
 
