@@ -13,24 +13,20 @@ namespace WaterSystem
             new Dictionary<int, TransformLocalToWorld>();
 
         [BurstCompile]
-        struct LocalToWorldConvertJob : IJob
+        struct LocalToWorldConvertJob : IJobParallelFor
         {
             [WriteOnly] public NativeArray<float3> PositionsWorld;
             [ReadOnly] public Matrix4x4 Matrix;
             [ReadOnly] public NativeArray<float3> PositionsLocal;
 
             // The code actually running on the job
-            public void Execute()
+            public void Execute(int i)
             {
-                int PositionsLocalCount = PositionsLocal.Length;
-                for (int i = 0; i < PositionsLocalCount; i++)
-                {
-                    float4 pos = float4.zero;
-                    pos.xyz = PositionsLocal[i];
-                    pos.w = 1f;
-                    pos = Matrix * pos;
-                    PositionsWorld[i] = pos.xyz;
-                }
+                float4 pos = float4.zero;
+                pos.xyz = PositionsLocal[i];
+                pos.w = 1f;
+                pos = Matrix * pos;
+                PositionsWorld[i] = pos.xyz;
             }
         }
 
@@ -67,7 +63,7 @@ namespace WaterSystem
                 Matrix = localToWorld
             };
 
-            Data[guid].Handle = Data[guid].Job.Schedule();
+            Data[guid].Handle = Data[guid].Job.Schedule(Data[guid].PositionsLocal.Length, 32);
             Data[guid].Processing = true;
             JobHandle.ScheduleBatchedJobs();
         }
