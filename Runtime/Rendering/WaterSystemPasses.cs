@@ -119,6 +119,7 @@ namespace WaterSystem.Rendering
         private Mesh infiniteMesh;
         private Shader infiniteShader;
         private Material infiniteMaterial;
+        static readonly int BumpScale = Shader.PropertyToID("_BumpScale");
 
         public InfiniteWaterPass(Mesh mesh, Shader shader)
         {
@@ -154,10 +155,9 @@ namespace WaterSystem.Rendering
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, new ProfilingSampler("Infinite Water")))
             {
-
                 var probe = RenderSettings.ambientProbe;
 
-                infiniteMaterial.SetFloat("_BumpScale", 0.5f);
+                infiniteMaterial.SetFloat(BumpScale, 0.5f);
 
                 // Create the matrix to position the caustics mesh.
                 var position = cam.transform.position;

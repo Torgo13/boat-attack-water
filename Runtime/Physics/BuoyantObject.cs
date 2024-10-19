@@ -22,8 +22,8 @@ namespace WaterSystem.Physics
     public class BuoyantObject : MonoBehaviour
     {
         public BuoyancyType _buoyancyType; // type of buoyancy to calculate
-        public float density; // density of the object, this is calculated off it's volume and mass
-        public float volume; // volume of the object, this is calculated via it's colliders
+        public float density; // density of the object, this is calculated off its volume and mass
+        public float volume; // volume of the object, this is calculated via its colliders
         public float voxelResolution = 0.51f; // voxel resolution, represents the half size of a voxel when creating the voxel representation
         private Bounds _voxelBounds; // bounds of the voxels
         public Vector3 centerOfMass = Vector3.zero; // Center Of Mass offset
@@ -146,9 +146,6 @@ namespace WaterSystem.Physics
                     // do the voxel non-physical
                     break;
                 case BuoyancyType.Physical:
-                    LocalToWorldJob.CompleteJob(_guid);
-                    GetVelocityPoints();
-                    break;
                 case BuoyancyType.PhysicalVoxel:
                     LocalToWorldJob.CompleteJob(_guid);
                     GetVelocityPoints();
