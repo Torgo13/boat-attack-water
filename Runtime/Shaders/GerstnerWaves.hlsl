@@ -53,12 +53,12 @@ WaveStruct GerstnerWave(float2 pos, float waveCountMulti, half amplitude, half2 
 	half a = (sinCalc + 1) * 0.5;
 	
 	// calculate the offsets for the current point
-	wave.xz = qi * amplitude * windDir * cosCalc;
+	wave.xz = amplitude * cosCalc * qi * windDir;
 	wave.y = sinCalc * amplitude * waveCountMulti;// the height is divided by the number of waves
 
 	////////////////////////////normal output calculations/////////////////////////
 	// normal vector
-	half3 n = half3(-(windDir * wa * cosCalc),
+	half3 n = half3(-(cosCalc * wa * windDir),
 					1-qi * wa * sinCalc);
 
 	////////////////////////////////assign to output///////////////////////////////
@@ -88,7 +88,7 @@ inline void SampleWaves(float3 position, half opacity, out WaveStruct waveOut)
 	opacity = saturate(opacity);
 
 	UNITY_LOOP
-	for(uint i = 0; i < _WaveCount; i++)
+	for (uint i = 0; i < _WaveCount; i++)
 	{
 #if defined(USE_STRUCTURED_BUFFER)
 		Wave w = _WaveDataBuffer[i];
@@ -108,6 +108,7 @@ inline void SampleWaves(float3 position, half opacity, out WaveStruct waveOut)
 		waveOut.normal += wave.normal; // add the normal
 		waveOut.foam += wave.foam;
 	}
+
 	waveOut.position *= opacity;// opacityMask;
 	waveOut.normal *= float3(opacity, 1, opacity);
 	waveOut.foam *= waveCountMulti * opacity;
@@ -120,7 +121,8 @@ void Gerstner_SG_test_half(float2 pos, half amp, half2 dir, half length, out flo
 		amp,
 		dir,
 		length
-		);
+	);
+
 	position = wave.position;
 	normal = wave.normal;
 }

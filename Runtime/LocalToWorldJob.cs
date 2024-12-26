@@ -1,16 +1,15 @@
 using System.Collections.Generic;
-using Unity.Burst;
+using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
+using Unity.Burst;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace WaterSystem
 {
     public static class LocalToWorldJob
     {
-        private static readonly Dictionary<int, TransformLocalToWorld> Data =
-            new Dictionary<int, TransformLocalToWorld>();
+        private static readonly Dictionary<int, TransformLocalToWorld> Data = new Dictionary<int, TransformLocalToWorld>();
 
         [BurstCompile]
         struct LocalToWorldConvertJob : IJobParallelFor
@@ -22,7 +21,7 @@ namespace WaterSystem
             // The code actually running on the job
             public void Execute(int i)
             {
-                float4 pos = float4.zero;
+                var pos = float4.zero;
                 pos.xyz = PositionsLocal[i];
                 pos.w = 1f;
                 pos = Matrix * pos;
@@ -32,19 +31,14 @@ namespace WaterSystem
 
         public static void SetupJob(int guid, Vector3[] positions, ref NativeArray<float3> output)
         {
-            int positionsCount = positions.Length;
-
-            TransformLocalToWorld jobData = new TransformLocalToWorld
+            var jobData = new TransformLocalToWorld
             {
                 PositionsWorld = output,
-                PositionsLocal = new NativeArray<float3>(positionsCount, Allocator.Persistent,
-                    NativeArrayOptions.UninitializedMemory)
+                PositionsLocal = new NativeArray<float3>(positions.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory)
             };
 
-            for (int i = 0; i < positionsCount; i++)
-            {
+            for (var i = 0; i < positions.Length; i++)
                 jobData.PositionsLocal[i] = positions[i];
-            }
 
             Data.Add(guid, jobData);
         }
@@ -52,9 +46,7 @@ namespace WaterSystem
         public static void ScheduleJob(int guid, Matrix4x4 localToWorld)
         {
             if (Data[guid].Processing)
-            {
                 return;
-            }
 
             Data[guid].Job = new LocalToWorldConvertJob
             {
@@ -77,9 +69,7 @@ namespace WaterSystem
         public static void Cleanup(int guid)
         {
             if (!Data.TryGetValue(guid, out TransformLocalToWorld value))
-            {
                 return;
-            }
 
             value.Handle.Complete();
             value.PositionsWorld.Dispose();

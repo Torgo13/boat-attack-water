@@ -83,9 +83,6 @@ namespace WaterSystem
         private static readonly int RampTexture = Shader.PropertyToID("_BoatAttack_RampTexture");
         private static readonly int CausticMap = Shader.PropertyToID("_CausticMap");
         private static readonly int SsrSettings = Shader.PropertyToID("_SSR_Settings");
-        private const string _SSR_SAMPLES_MEDIUM = "_SSR_SAMPLES_MEDIUM";
-        private const string _SSR_SAMPLES_HIGH = "_SSR_SAMPLES_HIGH";
-        private const string USE_STRUCTURED_BUFFER = "USE_STRUCTURED_BUFFER";
 
         private void Awake()
         {
@@ -97,16 +94,17 @@ namespace WaterSystem
             {
 #if UNITY_EDITOR || DEBUG
                 Debug.LogError("Multiple Ocean Components cannot exist in tandem");
-#endif
+#endif // UNITY_EDITOR || DEBUG
                 //SafeDestroy(this);
             }
         }
 
-        void OnEnable()
+        private void OnEnable()
         {
             LoadResources();
 
-            _useComputeBuffer = !computeOverride && SystemInfo.supportsComputeShaders && Application.platform != RuntimePlatform.WebGLPlayer;
+            _useComputeBuffer = !computeOverride && SystemInfo.supportsComputeShaders
+                && Application.platform != RuntimePlatform.WebGLPlayer;
 
             RenderPipelineManager.beginCameraRendering += BeginCameraRendering;
 
@@ -121,9 +119,7 @@ namespace WaterSystem
         private void OnDestroy()
         {
             if (_instance == this)
-            {
                 _instance = null;
-            }
         }
 
         void Cleanup()
@@ -131,26 +127,13 @@ namespace WaterSystem
             GerstnerWavesJobs.Cleanup();
             RenderPipelineManager.beginCameraRendering -= BeginCameraRendering;
 
-            if (waveBuffer != null)
-            {
-                waveBuffer.Dispose();
-                waveBuffer = null;
-            }
+            waveBuffer?.Dispose();
 
             // pass cleanup
             _infiniteWaterPass = null;
 
-            if (_waterBufferPass != null)
-            {
-                _waterBufferPass.Cleanup();
-                _waterBufferPass = null;
-            }
-
-            if (_causticsPass != null)
-            {
-                _causticsPass.Cleanup();
-                _causticsPass = null;
-            }
+            _waterBufferPass?.Cleanup();
+            _causticsPass?.Cleanup();
 
             PlanarReflections.Cleanup();
         }
@@ -158,20 +141,10 @@ namespace WaterSystem
         private void BeginCameraRendering(ScriptableRenderContext src, Camera cam)
         {
             if (!WaterUtility.CanRender(gameObject, cam) || _instance == null)
-            {
                 return;
-            }
-
-            // Fallback to Screen Space Reflections if the renderscale has been changed
-            /*if (settingsData.refType == Data.ReflectionType.PlanarReflection && ((UniversalRenderPipelineAsset)QualitySettings.renderPipeline).renderScale != 1f)
-            {
-                settingsData.refType = Data.ReflectionType.ScreenSpaceReflection;
-            }*/
 
             if (settingsData.refType == Data.ReflectionType.PlanarReflection)
-            {
                 PlanarReflections.Execute(src, cam);
-            }
 
             if (_causticMaterial == null)
             {
@@ -179,28 +152,21 @@ namespace WaterSystem
                 _causticMaterial.SetTexture(CausticMap, resources.defaultSurfaceMap);
             }
 
-            if (infiniteWater && _infiniteWaterPass == null)
-            {
-                _infiniteWaterPass = new InfiniteWaterPass(resources.defaultInfiniteWaterMesh, resources.infiniteWaterShader);
-            }
-            if (_waterBufferPass == null)
-            {
-                _waterBufferPass = new WaterFxPass();
-            }
-            if (_causticsPass == null)
-            {
-                _causticsPass = new WaterCausticsPass(_causticMaterial);
-            }
-
-            UniversalAdditionalCameraData urpData = cam.GetUniversalAdditionalCameraData();
             if (infiniteWater)
-            {
+                _infiniteWaterPass ??= new InfiniteWaterPass(resources.defaultInfiniteWaterMesh, resources.infiniteWaterShader);
+
+            _waterBufferPass ??= new WaterFxPass();
+            _causticsPass ??= new WaterCausticsPass(_causticMaterial);
+
+            var urpData = cam.GetUniversalAdditionalCameraData();
+
+            if (infiniteWater)
                 urpData.scriptableRenderer.EnqueuePass(_infiniteWaterPass);
-            }
+
             urpData.scriptableRenderer.EnqueuePass(_waterBufferPass);
             urpData.scriptableRenderer.EnqueuePass(_causticsPass);
 
-            float roll = cam.transform.localEulerAngles.z;
+            var roll = cam.transform.localEulerAngles.z;
             Shader.SetGlobalFloat(CameraRoll, roll);
             Shader.SetGlobalMatrix(InvViewProjection,
                 (GL.GetGPUProjectionMatrix(cam.projectionMatrix, false) * cam.worldToCameraMatrix).inverse);
@@ -210,19 +176,18 @@ namespace WaterSystem
             const float forwards = 10f;
             const float yOffset = -0.25f;
 
-            Vector3 newPos = cam.transform.TransformPoint(Vector3.forward * forwards);
+            var newPos = cam.transform.TransformPoint(Vector3.forward * forwards);
             newPos.y = yOffset + _instance.transform.position.y;
             newPos.x = quantizeValue * (int)(newPos.x / quantizeValue);
             newPos.z = quantizeValue * (int)(newPos.z / quantizeValue);
 
-            float blendDist = (settingsData.distanceBlend + 10) / 100f;
+            var blendDist = (settingsData.distanceBlend + 10) / 100f;
 
-            Matrix4x4 matrix = Matrix4x4.TRS(newPos, Quaternion.identity, Vector3.one * blendDist); // transform.localToWorldMatrix;
+            var matrix = Matrix4x4.TRS(newPos, Quaternion.identity, Vector3.one * blendDist); // transform.localToWorldMatrix;
 
-            int defaultWaterMeshesLength = resources.defaultWaterMeshes.Length;
-            for (int i = 0; i < defaultWaterMeshesLength; i++)
+            foreach (var mesh in resources.defaultWaterMeshes)
             {
-                Graphics.DrawMesh(resources.defaultWaterMeshes[i],
+                Graphics.DrawMesh(mesh,
                     matrix,
                     resources.defaultSeaMaterial,
                     gameObject.layer,
@@ -230,29 +195,18 @@ namespace WaterSystem
                     0,
                     null,
                     ShadowCastingMode.Off,
-                    false,
+                    false, //true,
                     null,
                     LightProbeUsage.Off);
             }
         }
 
-        private static void SafeDestroy(Object obj, bool immediate = false)
+        private static void SafeDestroy(Object o)
         {
-            if (obj != null)
-            {
-#if UNITY_EDITOR
-                if (immediate)
-                {
-                    DestroyImmediate(obj);
-                }
-                else
-                {
-                    EditorApplication.delayCall += () => DestroyImmediate(obj);
-                }
-#else
-                Object.Destroy(obj);
-#endif
-            }
+            if (Application.isPlaying)
+                Destroy(o);
+            else
+                DestroyImmediate(o);
         }
 
         void LoadResources()
@@ -280,10 +234,8 @@ namespace WaterSystem
             SetDebugMode(shadingDebug);
 
             // CPU side
-            if (!GerstnerWavesJobs.Initialized)
-            {
+            if (GerstnerWavesJobs.Initialized == false)
                 GerstnerWavesJobs.Init();
-            }
         }
 
         private void LateUpdate()
@@ -307,7 +259,16 @@ namespace WaterSystem
             }
         }
 
-        int _reflectionTypes;
+        public void FragWaveNormals(bool toggle)
+        {
+            var mat = GetComponent<Renderer>().sharedMaterial;
+            if (toggle)
+                mat.EnableKeyword("GERSTNER_WAVES");
+            else
+                mat.DisableKeyword("GERSTNER_WAVES");
+        }
+
+        private int _reflectionTypes;
         public int ReflectionTypes
         {
             get
@@ -331,13 +292,12 @@ namespace WaterSystem
             Shader.SetGlobalTexture(DitherTexture, resources.ditherNoise);
 
             _maxWaveHeight = 0f;
-            int waveDataLength = GerstnerWavesJobs._waveData.Length;
-            for (int i = 0; i < waveDataLength; i++)
+            foreach (var w in GerstnerWavesJobs._waveData)
             {
-                _maxWaveHeight += GerstnerWavesJobs._waveData[i].x;
+                _maxWaveHeight += w.x;
             }
-            _maxWaveHeight = Mathf.Max(_maxWaveHeight / GerstnerWavesJobs._waveData.Length, 0.5f);
 
+            _maxWaveHeight = Mathf.Max(_maxWaveHeight / GerstnerWavesJobs._waveData.Length, 0.5f);
             _waveHeight = transform.position.y;
 
             Shader.SetGlobalColor(AbsorptionColor, settingsData._absorptionColor.gamma);
@@ -355,33 +315,31 @@ namespace WaterSystem
                 Data.ReflectionType reflect = (Data.ReflectionType)i;
 
                 if (settingsData.refType == reflect)
-                {
                     Shader.EnableKeyword(Data.GetReflectionKeyword(reflect));
-                }
                 else
-                {
                     Shader.DisableKeyword(Data.GetReflectionKeyword(reflect));
-                }
             }
 
             if (settingsData.refType == Data.ReflectionType.ScreenSpaceReflection)
             {
                 Vector4 settings = new Vector4(settingsData.SsrSettings.StepSize,
-                        settingsData.SsrSettings.Thickness, 0, 0);
+                    settingsData.SsrSettings.Thickness, 0, 0);
+
                 Shader.SetGlobalVector(SsrSettings, settings);
+
                 switch (settingsData.SsrSettings.Steps)
                 {
                     case Data.SSRSteps.High:
-                        Shader.EnableKeyword(_SSR_SAMPLES_HIGH);
-                        Shader.DisableKeyword(_SSR_SAMPLES_MEDIUM);
+                        Shader.EnableKeyword("_SSR_SAMPLES_HIGH");
+                        Shader.DisableKeyword("_SSR_SAMPLES_MEDIUM");
                         break;
                     case Data.SSRSteps.Medium:
-                        Shader.DisableKeyword(_SSR_SAMPLES_HIGH);
-                        Shader.EnableKeyword(_SSR_SAMPLES_MEDIUM);
+                        Shader.DisableKeyword("_SSR_SAMPLES_HIGH");
+                        Shader.EnableKeyword("_SSR_SAMPLES_MEDIUM");
                         break;
                     default:
-                        Shader.DisableKeyword(_SSR_SAMPLES_HIGH);
-                        Shader.DisableKeyword(_SSR_SAMPLES_MEDIUM);
+                        Shader.DisableKeyword("_SSR_SAMPLES_HIGH");
+                        Shader.DisableKeyword("_SSR_SAMPLES_MEDIUM");
                         break;
                 }
             }
@@ -389,14 +347,16 @@ namespace WaterSystem
             int waveCount = GerstnerWavesJobs._waveData.Length;
             Shader.SetGlobalInt(WaveCount, waveCount);
 
+            // Check if the wave data can fit in a Graphics Buffer
+            _useComputeBuffer &= waveCount * 12 <= SystemInfo.maxGraphicsBufferSize;
+
             //GPU side
-            if (_useComputeBuffer && waveCount * 12 <= SystemInfo.maxGraphicsBufferSize)
+            if (_useComputeBuffer)
             {
-                Shader.EnableKeyword(USE_STRUCTURED_BUFFER);
+                Shader.EnableKeyword("USE_STRUCTURED_BUFFER");
                 if (waveBuffer != null)
-                {
                     waveBuffer.Dispose();
-                }
+
                 //waveBuffer = new ComputeBuffer(waveCount, Unity.Collections.LowLevel.Unsafe.UnsafeUtility.SizeOf<Data.Wave>());
                 waveBuffer = new ComputeBuffer(waveCount, 12); // Data.Wave has 3 floats
                 waveBuffer.SetData(GerstnerWavesJobs._waveData);
@@ -404,14 +364,18 @@ namespace WaterSystem
             }
             else
             {
-                Shader.DisableKeyword(USE_STRUCTURED_BUFFER);
-                Vector4[] waveData = new Vector4[GerstnerWavesJobs._waveData.Length];
-                int wavesCount = GerstnerWavesJobs._waveData.Length;
-                for (int i = 0; i < wavesCount; i++)
+                Shader.DisableKeyword("USE_STRUCTURED_BUFFER");
+                int waveDataLength = GerstnerWavesJobs._waveData.Length;
+                using var _0 = UnityEngine.Pool.ListPool<Vector4>.Get(out var waveData);
+                if (waveData.Capacity < waveDataLength)
+                    waveData.Capacity = waveDataLength;
+
+                for (int i = 0; i < waveDataLength; i++)
                 {
                     float3 wave = GerstnerWavesJobs._waveData[i];
-                    waveData[i] = new Vector4(wave.x, wave.y, wave.z);
+                    waveData.Add(new Vector4(wave.x, wave.y, wave.z));
                 }
+
                 Shader.SetGlobalVectorArray(WaveData, waveData);
             }
         }
@@ -425,7 +389,7 @@ namespace WaterSystem
                 const int rampCount = 2;
                 const int rampRes = 128;
 
-                int pixelHeight = Mathf.CeilToInt(rampCount / 4.0f);
+                var pixelHeight = Mathf.CeilToInt(rampCount / 4.0f);
 
                 _rampTexture = new Texture2D(rampRes, pixelHeight, TextureFormat.RGBA32, 0, false, true)
                 {
@@ -434,7 +398,7 @@ namespace WaterSystem
                 };
 
                 NativeArray<Color32> cols = _rampTexture.GetPixelData<Color32>(0);
-                for (int i = 0; i < rampRes; i++)
+                for (var i = 0; i < rampRes; i++)
                 {
                     float temp = i / (float)rampRes;
                     cols[i] = new Color32(
@@ -445,7 +409,6 @@ namespace WaterSystem
                 }
 
                 _rampTexture.Apply();
-                cols.Dispose();
             }
 
             Shader.SetGlobalTexture(RampTexture, _rampTexture);
@@ -454,29 +417,30 @@ namespace WaterSystem
         private void SetupWaves()
         {
             //create basic waves based off basic wave settings
-            Random.State backupSeed = Random.state;
+            var backupSeed = Random.state;
             Random.InitState(settingsData.randomSeed);
-            Data.BasicWaves basicWaves = settingsData._basicWaveSettings;
-            float a = basicWaves.amplitude;
-            float d = basicWaves.direction;
-            float l = basicWaves.wavelength;
-            int numWave = basicWaves.waveCount;
+            var basicWaves = settingsData._basicWaveSettings;
+            var a = basicWaves.amplitude;
+            var d = basicWaves.direction;
+            var l = basicWaves.wavelength;
+            var numWave = basicWaves.waveCount;
             if (!GerstnerWavesJobs._waveData.IsCreated)
             {
                 GerstnerWavesJobs._waveData = new NativeArray<float3>(numWave, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             }
 
-            float r = 1f / numWave;
+            var r = 1f / numWave;
 
-            for (int i = 0; i < numWave; i++)
+            for (var i = 0; i < numWave; i++)
             {
-                float p = Mathf.Lerp(0.1f, 1.9f, i * r);
-                float amp = a * p * Random.Range(0.66f, 1.24f);
-                float dir = d + Random.Range(-90f, 90f);
-                float len = Mathf.PI * 2f / (l * p * Random.Range(0.75f, 1.2f));
+                var p = Mathf.Lerp(0.1f, 1.9f, i * r);
+                var amp = a * p * Random.Range(0.66f, 1.24f);
+                var dir = d + Random.Range(-90f, 90f);
+                var len = Mathf.PI * 2f / (l * p * Random.Range(0.75f, 1.2f));
                 GerstnerWavesJobs._waveData[i] = new float3(amp, dir, len);
                 Random.InitState(settingsData.randomSeed + i + 1);
             }
+
             Random.state = backupSeed;
         }
 

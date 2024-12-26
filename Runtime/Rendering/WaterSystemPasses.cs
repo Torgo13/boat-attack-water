@@ -8,11 +8,8 @@ namespace WaterSystem.Rendering
 
     public class WaterFxPass : ScriptableRenderPass
     {
-        private const string m_BufferATexture = "_WaterBufferA";
-        private const string m_BufferBTexture = "_WaterBufferB";
-        static readonly int WaterBufferA = Shader.PropertyToID(m_BufferATexture);
-        static readonly int WaterBufferB = Shader.PropertyToID(m_BufferBTexture);
-        private const string m_BufferDepthTexture = "_WaterBufferDepth";
+        private static readonly int WaterBufferA = Shader.PropertyToID("_WaterBufferA");
+        private static readonly int WaterBufferB = Shader.PropertyToID("_WaterBufferB");
 
 #if UNITY_2022_1_OR_NEWER
         RTHandle[] multiTargets = new RTHandle[2];
@@ -49,9 +46,9 @@ namespace WaterSystem.Rendering
             //Vector2 scaleFactor = new Vector2(resolutionScale, resolutionScale);
 
 #if UNITY_2022_1_OR_NEWER
-            RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetA, td, FilterMode.Bilinear, name: m_BufferATexture);
-            RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetB, td, FilterMode.Bilinear, name: m_BufferBTexture);
-            RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetDepth, td, FilterMode.Bilinear, name: m_BufferDepthTexture);
+            RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetA, td, FilterMode.Bilinear, name: "_WaterBufferA");
+            RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetB, td, FilterMode.Bilinear, name: "_WaterBufferB");
+            RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetDepth, td, FilterMode.Bilinear, name: "_WaterBufferDepth");
             multiTargets[0] = m_BufferTargetA;
             multiTargets[1] = m_BufferTargetB;
             cmd.SetGlobalTexture(WaterBufferA, m_BufferTargetA.nameID);
@@ -73,11 +70,9 @@ namespace WaterSystem.Rendering
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             if (renderingData.cameraData.camera.cameraType != CameraType.Game)
-            {
                 return;
-            }
 
-            DrawingSettings drawSettings = CreateDrawingSettings(m_WaterFXShaderTag, ref renderingData, SortingCriteria.CommonTransparent);
+            var drawSettings = CreateDrawingSettings(m_WaterFXShaderTag, ref renderingData, SortingCriteria.CommonTransparent);
 
             CommandBuffer cmd = CommandBufferPool.Get();
             cmd.Clear();
@@ -88,7 +83,11 @@ namespace WaterSystem.Rendering
 
         private RenderTextureDescriptor GetRTD(int width, int height)
         {
-            return new RenderTextureDescriptor(width, height, SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBHalf) ? RenderTextureFormat.ARGBHalf : RenderTextureFormat.Default, 0)
+            var format = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBHalf)
+                ? RenderTextureFormat.ARGBHalf
+                : RenderTextureFormat.Default;
+            
+            return new RenderTextureDescriptor(width, height, format, 0)
             {
                 // dimension
                 dimension = TextureDimension.Tex2D,
@@ -119,7 +118,7 @@ namespace WaterSystem.Rendering
         private Mesh infiniteMesh;
         private Shader infiniteShader;
         private Material infiniteMaterial;
-        static readonly int BumpScale = Shader.PropertyToID("_BumpScale");
+        private static readonly int BumpScale = Shader.PropertyToID("_BumpScale");
 
         public InfiniteWaterPass(Mesh mesh, Shader shader)
         {
@@ -134,7 +133,8 @@ namespace WaterSystem.Rendering
 
             if (cam.cameraType != CameraType.Game &&
                 cam.cameraType != CameraType.SceneView ||
-                cam.name.Contains("Reflections")) return;
+                cam.name.Contains("Reflections"))
+                return;
 
             if (infiniteMesh == null)
             {
@@ -146,11 +146,12 @@ namespace WaterSystem.Rendering
 
             if (infiniteShader)
             {
-                if(infiniteMaterial == null)
+                if (infiniteMaterial == null)
                     infiniteMaterial = new Material(infiniteShader);
             }
 
-            if (!infiniteMaterial || !infiniteMesh) return;
+            if (!infiniteMaterial || !infiniteMesh)
+                return;
 
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, new ProfilingSampler("Infinite Water")))
@@ -167,6 +168,7 @@ namespace WaterSystem.Rendering
                 matBloc.CopySHCoefficientArraysFrom(new[] { probe });
                 cmd.DrawMesh(infiniteMesh, matrix, infiniteMaterial, 0, 0, matBloc);
             }
+
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }
@@ -181,9 +183,9 @@ namespace WaterSystem.Rendering
         private const string k_RenderWaterCausticsTag = "Render Water Caustics";
         private ProfilingSampler m_WaterCaustics_Profile = new ProfilingSampler(k_RenderWaterCausticsTag);
         private readonly Material WaterCausticMaterial;
-        private Mesh m_mesh;
-        private static readonly int WaterLevel = Shader.PropertyToID("_WaterLevel");
+        private static Mesh m_mesh;
         private static readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
+        private static readonly int WaterLevel = Shader.PropertyToID("_WaterLevel");
 
         public WaterCausticsPass(Material material)
         {
@@ -197,35 +199,30 @@ namespace WaterSystem.Rendering
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            Camera cam = renderingData.cameraData.camera;
+            var cam = renderingData.cameraData.camera;
             // Stop the pass rendering in the preview or material missing
-            if (cam.cameraType != CameraType.Game || WaterCausticMaterial == null)
-            {
+            if (cam.cameraType != CameraType.Game || !WaterCausticMaterial)
                 return;
-            }
 
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, m_WaterCaustics_Profile))
             {
-                Matrix4x4 sunMatrix = RenderSettings.sun != null
+                var sunMatrix = RenderSettings.sun != null
                     ? RenderSettings.sun.transform.localToWorldMatrix
                     : Matrix4x4.TRS(Vector3.zero, Quaternion.Euler(-45f, 45f, 0f), Vector3.one);
                 WaterCausticMaterial.SetMatrix(MainLightDir, sunMatrix);
                 float waterLevel = Ocean.Instance.transform.position.y;
                 WaterCausticMaterial.SetFloat(WaterLevel, waterLevel);
 
-
                 // Create mesh if needed
-                if (m_mesh == null)
-                {
+                if (!m_mesh)
                     m_mesh = GenerateCausticsMesh(1000f);
-                }
 
                 // Create the matrix to position the caustics mesh.
-                Vector3 position = cam.transform.position;
+                var position = cam.transform.position;
                 //position.y = 0; // TODO should read a global 'water height' variable.
                 position.y = waterLevel;
-                Matrix4x4 matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
+                var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
                 // Setup the CommandBuffer and draw the mesh with the caustic material and matrix
                 cmd.DrawMesh(m_mesh, matrix, WaterCausticMaterial, 0, 0);
             }
@@ -236,10 +233,6 @@ namespace WaterSystem.Rendering
 
         public void Cleanup()
         {
-            /*if (WaterCausticMaterial != null)
-            {
-                CoreUtils.Destroy(WaterCausticMaterial);
-            }*/
             if (m_mesh != null)
             {
                 CoreUtils.Destroy(m_mesh);
@@ -250,31 +243,33 @@ namespace WaterSystem.Rendering
         {
             size *= 0.5f;
 
-            Vector3[] verts = {
-                new Vector3(-size, flat ? 0f : -size, flat ? -size : 0f),
-                new Vector3(size, flat ? 0f : -size, flat ? -size : 0f),
-                new Vector3(-size, flat ? 0f : size, flat ? size : 0f),
-                new Vector3(size, flat ? 0f : size, flat ? size : 0f)
-            };
+            using var _0 = UnityEngine.Pool.ListPool<Vector3>.Get(out var verts);
+            verts.Add(new Vector3(-size, flat ? 0f : -size, flat ? -size : 0f));
+            verts.Add(new Vector3(size, flat ? 0f : -size, flat ? -size : 0f));
+            verts.Add(new Vector3(-size, flat ? 0f : size, flat ? size : 0f));
+            verts.Add(new Vector3(size, flat ? 0f : size, flat ? size : 0f));
 
-            int[] tris = {
-                0, 2, 1,
-                2, 3, 1
-            };
+            using var _1 = UnityEngine.Pool.ListPool<int>.Get(out var tris);
+            if (tris.Capacity < 6)
+                tris.Capacity = 6;
+            tris.Add(0);
+            tris.Add(2);
+            tris.Add(1);
+            tris.Add(2);
+            tris.Add(3);
+            tris.Add(1);
 
-            Vector2[] uvs = {
-                new Vector2(0f, 0f),
-                new Vector2(1f, 0f),
-                new Vector2(0f, 1f),
-                new Vector2(1f, 1f)
-            };
+            using var _2 = UnityEngine.Pool.ListPool<Vector2>.Get(out var uvs);
+            uvs.Add(new Vector2(0f, 0f));
+            uvs.Add(new Vector2(1f, 0f));
+            uvs.Add(new Vector2(0f, 1f));
+            uvs.Add(new Vector2(1f, 1f));
 
-            Mesh m = new Mesh
-            {
-                vertices = verts,
-                triangles = tris,
-                uv = uvs
-            };
+            Mesh m = new Mesh();
+            m.SetVertices(verts);
+            m.SetTriangles(tris, 0);
+            m.SetUVs(0, uvs);
+            m.Optimize();
 
             return m;
         }

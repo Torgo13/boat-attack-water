@@ -56,8 +56,9 @@ half3 Highlights(half3 positionWS, half roughness, half3 normalWS, half3 viewDir
     return specularTerm * mainLight.color * mainLight.distanceAttenuation;
 }
 
+/*
 //Soft Shadows
-/*half SoftShadows(float2 screenUV, float3 positionWS, half3 viewDir, half depth)
+half SoftShadows(float2 screenUV, float3 positionWS, half3 viewDir, half depth)
 {
 #ifdef MAIN_LIGHT_CALCULATE_SHADOWS
     half2 jitterUV = screenUV * _ScreenParams.xy * _DitherPattern_TexelSize.xy;
@@ -87,7 +88,8 @@ half3 Highlights(half3 positionWS, half roughness, half3 normalWS, half3 viewDir
 #else
     return 1;
 #endif
-}*/
+}
+*/
 
 ///////////////////////////////////////////////////////////////////////////////
 //                           Reflection Modes                                //
@@ -128,7 +130,8 @@ half RayMarch(float3 origin, float3 direction, out half2 sampleUV)
         direction *= 2;
         sampleUV = ViewSpacePosToUV(origin);
             
-        if(sampleUV.x > 1 || sampleUV.x < 0 || sampleUV.y > 1 || sampleUV.y < 0) { break; }
+        if(sampleUV.x > 1 || sampleUV.x < 0 || sampleUV.y > 1 || sampleUV.y < 0)
+            break;
 
         float deviceDepth = GetDepth(sampleUV); if (!deviceDepth) continue;
         float3 samplePos = ViewPosFromDepth(sampleUV, deviceDepth);
@@ -154,10 +157,11 @@ half3 SampleReflections(float3 normalWS, float3 positionWS, float3 viewDirection
 {
     half3 reflection = GlossyEnvironmentReflection(reflect(-viewDirectionWS, normalWS), 0, 1); //CubemapReflection(viewDirectionWS, positionWS, normalWS);
     //half2 refOffset = 0;
-    
-/*#if _REFLECTION_CUBEMAP
+/*
+#if _REFLECTION_CUBEMAP
     half3 reflectVector = reflect(-viewDirectionWS, normalWS);
-    reflection = SAMPLE_TEXTURECUBE_LOD(_CubemapTexture, sampler_CubemapTexture, reflectVector, 0).rgb;*/
+    reflection = SAMPLE_TEXTURECUBE_LOD(_CubemapTexture, sampler_CubemapTexture, reflectVector, 0).rgb;
+*/
 #if _REFLECTION_PROBES
     //reflection = CubemapReflection(viewDirectionWS, positionWS, normalWS);
 #elif _REFLECTION_PLANARREFLECTION
@@ -183,7 +187,5 @@ half3 SampleReflections(float3 normalWS, float3 positionWS, float3 viewDirection
     //do backup
     return reflection;
 }
-
-
 
 #endif // WATER_LIGHTING_INCLUDED

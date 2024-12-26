@@ -7,7 +7,7 @@ Shader "Boat Attack/Water/Tessellated"
     }
     SubShader
     {
-        Tags { "RenderType"="Transparent" "Queue"="Transparent-100" "RenderPipeline" = "LightweightPipeline" }
+        Tags { "RenderType"="Transparent" "Queue"="Transparent-100" "RenderPipeline" = "UniversalPipeline" }
         LOD 300
         ZWrite Off
 
@@ -26,14 +26,14 @@ Shader "Boat Attack/Water/Tessellated"
             #pragma multi_compile _ USE_STRUCTURED_BUFFER
             
             // -------------------------------------
-            // Lightweight Pipeline keywords
-            //#pragma multi_compile _ _MAIN_LIGHT_SHADOWS /*_MAIN_LIGHT_SHADOWS_CASCADE*/
+            // Universal Pipeline keywords
+            //#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             //#pragma multi_compile _ _SHADOWS_SOFT
             
             //--------------------------------------
             // GPU Instancing
             #pragma multi_compile_instancing
-            //#pragma multi_compile_fog
+            #pragma multi_compile_fog
             
             ////////////////////INCLUDES//////////////////////
             #include "WaterCommon.hlsl"

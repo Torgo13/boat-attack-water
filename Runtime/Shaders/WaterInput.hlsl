@@ -46,7 +46,7 @@ TEXTURE2D(_BoatAttack_RampTexture); SAMPLER(sampler_BoatAttack_Linear_Clamp_Ramp
 
 struct Attributes // vert struct
 {
-    float4 positionOS 			    : POSITION;		// vertex positions
+    float4  positionOS 			    : POSITION;		// vertex positions
 	float2	texcoord 				: TEXCOORD0;	// local UVs
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
@@ -81,7 +81,7 @@ struct WaterSurfaceData
 {
     half3   absorption;
 	half3   scattering;
-    half3    foam;
+    half3   foam;
     half    foamMask;
 };
 

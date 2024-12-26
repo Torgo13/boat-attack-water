@@ -247,7 +247,8 @@ void InitializeInputData(Varyings input, out WaterInputData inputData, float2 sc
 
     inputData.viewDirectionWS = input.viewDirectionWS.xyz;
 
-    half2 distortion = screenUV.xy + DistortionUVs(depth.x, inputData.normalWS, input.viewDirectionWS.xyz); //* clamp(depth.x, 0, 5);
+    half2 distortion = DistortionUVs(depth.x, inputData.normalWS, input.viewDirectionWS.xyz);
+    distortion = screenUV.xy + distortion;//* clamp(depth.x, 0, 5);
     float d = depth.x;
     depth.xz = AdjustedDepth(distortion, input.additionalData); // only x y
     distortion = depth.x < 0 ? screenUV.xy : distortion;
@@ -313,8 +314,6 @@ half3 WaterShading(WaterInputData input, WaterSurfaceData surfaceData, float4 ad
     directLighting += saturate(temp) * mainLight.color * 5;
     //half3 directLighting = F_Schlick(0.2, dot(mainLight.direction, input.normalWS)) * mainLight.color;
     //directLighting += saturate(pow(dot(input.viewDirectionWS.xyz, -mainLight.direction) * additionalData.z, 3)) * Absorption(1) * mainLight.color * 2;
-    half3 sss = directLighting /* * volumeShadow */ + GI;
-    sss *= Scattering(input.depth);
 
 	// Specular
 	//half NdotL = saturate(dot(input.normalWS, mainLight.direction));
@@ -331,6 +330,10 @@ half3 WaterShading(WaterInputData input, WaterSurfaceData surfaceData, float4 ad
 
     // Foam
     surfaceData.foam *= (GI + directLighting * mainLight.shadowAttenuation) * 3 * saturate(surfaceData.foamMask);
+
+    // SSS
+    half3 sss = directLighting /* * volumeShadow */ + GI;
+    sss *= Scattering(input.depth);
 
     // Reflections
     half3 reflection = SampleReflections(input.normalWS, input.positionWS, input.viewDirectionWS, screenUV);

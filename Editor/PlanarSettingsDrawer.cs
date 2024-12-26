@@ -1,5 +1,5 @@
+﻿using UnityEngine;
 using UnityEditor;
-using UnityEngine;
 using PlanarSettings = WaterSystem.Rendering.PlanarReflections.PlanarReflectionSettings;
 
 namespace WaterSystem.Rendering

@@ -29,10 +29,9 @@ namespace WaterSystem.Physics
             {
                 if (obj.WaveResults != null)
                 {
-                    int waveResultsCount = obj.WaveResults.Length;
-                    for (int i = 0; i < waveResultsCount; i++)
+                    for (var i = 0; i < obj.WaveResults.Length; i++)
                     {
-                        Data.WaveOutputData h = obj.WaveResults[i];
+                        var h = obj.WaveResults[i];
                         EditorGUILayout.LabelField($"{i})Wave(heights):", $"X:{h.Position.x:00.00} Y:{h.Position.y:00.00} Z:{h.Position.z:00.00}");
                     }
                 }

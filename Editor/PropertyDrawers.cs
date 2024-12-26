@@ -10,13 +10,12 @@ namespace WaterSystem
         {
             public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
             {
+                var waveCount = property.FindPropertyRelative(nameof(Data.BasicWaves.waveCount));
+                var amplitude = property.FindPropertyRelative(nameof(Data.BasicWaves.amplitude));
+                var direction = property.FindPropertyRelative(nameof(Data.BasicWaves.direction));
+                var wavelength = property.FindPropertyRelative(nameof(Data.BasicWaves.wavelength));
 
-                SerializedProperty waveCount = property.FindPropertyRelative(nameof(Data.BasicWaves.waveCount));
-                SerializedProperty amplitude = property.FindPropertyRelative(nameof(Data.BasicWaves.amplitude));
-                SerializedProperty direction = property.FindPropertyRelative(nameof(Data.BasicWaves.direction));
-                SerializedProperty wavelength = property.FindPropertyRelative(nameof(Data.BasicWaves.wavelength));
-
-                Rect rect = new Rect(position.position, new Vector2(position.width, EditorGUIUtility.singleLineHeight));
+                var rect = new Rect(position.position, new Vector2(position.width, EditorGUIUtility.singleLineHeight));
                 EditorGUI.PropertyField(rect, waveCount);
                 rect.y += EditorGUIUtility.singleLineHeight;
                 EditorGUI.PropertyField(rect, amplitude);

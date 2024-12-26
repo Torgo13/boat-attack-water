@@ -11,14 +11,13 @@ Shader "Boat Attack/Water/WaterBuffer/WaterDepthOnly"
         ZWrite Off
         ZTest Always
         //Blend One One
+        ColorMask B 1
 		LOD 100
 
         Pass
         {
             Name "WaterFX"
 			Tags{"LightMode" = "WaterFX"}
-
-            ColorMask B 1
 			
             HLSLPROGRAM
             #pragma vertex vert

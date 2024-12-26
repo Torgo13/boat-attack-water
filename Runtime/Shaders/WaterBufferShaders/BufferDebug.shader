@@ -76,7 +76,6 @@ Shader "Boat Attack/Water/WaterBuffer/BufferDebug"
                 half4 buffer1 = grad * (1-fifty);
                 half4 buffer2 = grad * fifty;
 
-
                 half b1 = 1-saturate(floor(abs(single)));
                 half b2 = 1-saturate(floor(abs(single - 2)));
                 half b3 = 1-saturate(floor(abs(single - 4)));

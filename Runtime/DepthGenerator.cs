@@ -3,7 +3,11 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+
+#if UNITY_EDITOR
 using UnityEditor;
+#endif // UNITY_EDITOR
+
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
@@ -32,13 +36,14 @@ namespace WaterSystem
         private Material _material;
         private Transform _transform;
         private Vector3 _positionWS;
+        //[SerializeField] private half[] _values;
 
         public int size = 250;
         public int tileRes = 1024;
 
         public half range = (half)20.0;
         public half offset = (half)4.0;
-        public LayerMask mask;
+        public LayerMask mask = new LayerMask();
 
         //private static readonly float maxDepth = -999f;
 
@@ -59,10 +64,10 @@ namespace WaterSystem
             if (depthTile == null)
             {
 #if UNITY_EDITOR
-                Scene activeScene = gameObject.scene;
+                var activeScene = gameObject.scene;
                 //var sceneName = activeScene.name.Split('.')[0];
-                string path = activeScene.path.Split('.')[0];
-                string file = $"{gameObject.name}_DepthTile.png";
+                var path = activeScene.path.Split('.')[0];
+                var file = $"{gameObject.name}_DepthTile.png";
                 try
                 {
                     depthTile = AssetDatabase.LoadAssetAtPath<Texture2D>($"{path}/{file}");
@@ -83,6 +88,7 @@ namespace WaterSystem
             {
                 _globalDepthValues = new NativeArray<half>(tileRes * tileRes, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             }
+
             StoreDepthValues();
         }
 
@@ -97,16 +103,12 @@ namespace WaterSystem
         private void LateUpdate()
         {
             if (shader && !_material)
-            {
                 _material = CoreUtils.CreateEngineMaterial(shader);
-            }
 
             if (!depthTile || !_material)
-            {
                 return;
-            }
 
-            Matrix4x4 matrix = Matrix4x4.TRS(_positionWS, Quaternion.Euler(90, 0, 0), new Vector3(size, size, 0f));
+            var matrix = Matrix4x4.TRS(_positionWS, Quaternion.Euler(90, 0, 0), new Vector3(size, size, 0f));
             _material.SetTexture(Depth, depthTile);
             Graphics.DrawMesh(mesh, matrix, _material, 0);
         }
@@ -115,15 +117,44 @@ namespace WaterSystem
         private void OnDrawGizmosSelected()
         {
 #if UNITY_EDITOR
+            var t = transform;
             Gizmos.color = Color.cyan;
-            Gizmos.DrawWireCube(_transform.position, new Vector3(size, 0f, size));
+            Gizmos.DrawWireCube(t.position, new Vector3(size, 0f, size));
             if (mesh && depthTile)
             {
-                Matrix4x4 matrix = Matrix4x4.TRS(_transform.position, Quaternion.Euler(90, 0, 0), new Vector3(size, size, 0f));
+                Matrix4x4 matrix = Matrix4x4.TRS(t.position, Quaternion.Euler(90, 0, 0),
+                    new Vector3(size, size, 0f));
                 debugMaterial.mainTexture = depthTile;
                 debugMaterial.SetPass(0);
                 Graphics.DrawMeshNow(mesh, matrix);
             }
+
+            /*
+            if (_depthValues != null && _depthValues.Length != 0)
+            {
+                const float dist = 100f;
+                const int count = 10;
+
+                var pos = Camera.current.transform.position;
+                
+                for (var i = 0; i < count; i++)
+                {
+                    for (var j = 0; j < count; j++)
+                    {
+                        var flatPos = pos + new Vector3(i - count / 2, 0f, j - count / 2) * (dist / count);
+                        flatPos.y = t.position.y;
+                        var UVPos = GetUVPositon(flatPos);
+                        var depth = GetDepth(UVPos);
+                        var alpha = Mathf.InverseLerp(dist/2f, 0f, Vector3.Distance(pos, flatPos));
+                        GUIStyle style = new GUIStyle(EditorStyles.label);
+                        style.normal.textColor = Handles.color = new Color(1f, 1f, 1f, alpha);
+                        Handles.Label(flatPos, $"{depth:F4}\n(x:{UVPos.x:F4}, z:{UVPos.y:F4})", style);
+                        Handles.DrawDottedLine(flatPos, flatPos + Vector3.up * depth, 5f);
+                        Handles.DrawSolidDisc(flatPos + Vector3.up * depth, Vector3.up, 0.1f);
+                    }
+                }
+            }
+            */
 #endif
         }
 
@@ -138,10 +169,15 @@ namespace WaterSystem
 
             public void Execute(int index)
             {
-                float2 UVpos = GetUVPosition(Position[index]);
-                Depth[index] = UVpos.x is > 1.0f or < 0.0f || UVpos.y is > 1.0f or < 0.0f
-                    ? -999.0f
-                    : GetDepth(UVpos);
+                var UVpos = GetUVPosition(Position[index]);
+                if (UVpos.x is > 1.0f or < 0.0f || UVpos.y is > 1.0f or < 0.0f)
+                {
+                    Depth[index] = -999.0f;
+                }
+                else
+                {
+                    Depth[index] =  GetDepth(UVpos);
+                }
             }
 
             private readonly float2 GetUVPosition(float3 position)
@@ -158,26 +194,23 @@ namespace WaterSystem
             {
                 UVPos = math.clamp(UVPos, 0.0f, 0.999f);
 
-                int index = (int)(UVPos.x * DepthData.TileRes) * DepthData.TileRes + (int)(UVPos.y * DepthData.TileRes);
-                float depth = 1.0f - DepthValues[index];
-                return -(depth * (DepthData.Range + DepthData.Offset)) + DepthData.Offset;
+                var index = ((int)(UVPos.x * DepthData.TileRes) * DepthData.TileRes) + (int)(UVPos.y * DepthData.TileRes);
+                var depth = (1.0f - DepthValues[index]);
+                return (-(depth * (DepthData.Range + DepthData.Offset)) + DepthData.Offset);
             }
         }
 
         private void StoreDepthValues()
         {
             if (!depthTile)
-            {
                 return;
-            }
 
-            NativeArray<Color> pixels = depthTile.GetPixelData<Color>(0);
-            int width = depthTile.width; int height = depthTile.height;
-            for (int i = 0; i < width; i++)
+            var pixels = depthTile.GetPixelData<Color>(0);
+            for (var i = 0; i < depthTile.width; i++)
             {
-                for (int j = 0; j < height; j++)
+                for (var j = 0; j < depthTile.height; j++)
                 {
-                    int index = i * width + j;
+                    int index = i * depthTile.width + j;
                     _globalDepthValues[index] = (half)pixels[index].r;
                 }
             }

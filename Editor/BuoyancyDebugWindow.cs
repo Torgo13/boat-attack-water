@@ -14,7 +14,7 @@ namespace WaterSystem
         private static void Init()
         {
             // Get existing open window or if none, make a new one:
-            BuoyancyDebugWindow window = (BuoyancyDebugWindow)GetWindow(typeof(BuoyancyDebugWindow));
+            var window = (BuoyancyDebugWindow)GetWindow(typeof(BuoyancyDebugWindow));
             window.Show();
         }
 
@@ -28,19 +28,18 @@ namespace WaterSystem
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-            int count = 0;
-            foreach (KeyValuePair<int, int2> registryEntry in GerstnerWavesJobs.Registry)
+            var count = 0;
+            foreach (var registryEntry in GerstnerWavesJobs.Registry)
             {
-                Object obj = EditorUtility.InstanceIDToObject(registryEntry.Key);
-                Rect box = EditorGUILayout.BeginHorizontal();
+                var obj = EditorUtility.InstanceIDToObject(registryEntry.Key);
+                var box = EditorGUILayout.BeginHorizontal();
                 if (count % 2 == 0)
-                {
                     GUI.Box(box, GUIContent.none);
-                }
 
                 EditorGUILayout.LabelField($"{obj.name}", $"GUID:{registryEntry.Key}");
                 EditorGUILayout.LabelField($"indicies:{registryEntry.Value.x}-{registryEntry.Value.y}",
                     $"size:{registryEntry.Value.y - registryEntry.Value.x}");
+
                 if (GUILayout.Button("Ping Object"))
                 {
                     EditorGUIUtility.PingObject(registryEntry.Key);

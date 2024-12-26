@@ -1,7 +1,7 @@
-using System;
+﻿using System;
+using UnityEngine;
 using UnityEditor;
 using UnityEditor.Rendering;
-using UnityEngine;
 
 namespace WaterSystem
 {
@@ -73,7 +73,7 @@ namespace WaterSystem
 
         private void OnEnable()
         {
-            SerializedProperty settings = serializedObject.FindProperty(nameof(Ocean.settingsData));
+            var settings = serializedObject.FindProperty(nameof(Ocean.settingsData));
 
             // Color Settings
             maxVisibility = settings.FindPropertyRelative(nameof(Data.OceanSettings._waterMaxVisibility));
@@ -81,7 +81,7 @@ namespace WaterSystem
             scatteringColor = settings.FindPropertyRelative(nameof(Data.OceanSettings._scatteringColor));
             // Wave Settings
             customWaves = settings.FindPropertyRelative(nameof(Data.OceanSettings._customWaves));
-            SerializedProperty basicWaves = settings.FindPropertyRelative(nameof(Data.OceanSettings._basicWaveSettings));
+            var basicWaves = settings.FindPropertyRelative(nameof(Data.OceanSettings._basicWaveSettings));
             basicWaveCount = basicWaves.FindPropertyRelative(nameof(Data.BasicWaves.waveCount));
             basicWaveAmp = basicWaves.FindPropertyRelative(nameof(Data.BasicWaves.amplitude));
             basicWaveDir = basicWaves.FindPropertyRelative(nameof(Data.BasicWaves.direction));
@@ -106,12 +106,12 @@ namespace WaterSystem
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            Ocean ocean = target as Ocean;
+            var ocean = target as Ocean;
             EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(Ocean.shadingDebug)));
 
-            foreach (object value in Enum.GetValues(typeof(Sections)))
+            foreach (var value in Enum.GetValues(typeof(Sections)))
             {
                 DoSection((Sections)value);
             }
@@ -246,10 +246,9 @@ namespace WaterSystem
         void DoRaw()
         {
             _baseGUI = CoreEditorUtils.DrawHeaderFoldout("Raw GUI", _baseGUI);
+
             if (_baseGUI)
-            {
                 base.OnInspectorGUI();
-            }
         }
 
         private enum Sections

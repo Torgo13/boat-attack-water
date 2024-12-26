@@ -16,7 +16,7 @@ namespace WaterSystem
         /// <summary>
         /// This class stores the settings for a water system
         /// </summary>
-        [Serializable]
+        [System.Serializable]
         public class OceanSettings
         {
             // General

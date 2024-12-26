@@ -12,9 +12,9 @@
 
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using Unity.Collections;
 using Unity.Mathematics;
-using UnityEngine;
 using UnityPhysics = UnityEngine.Physics;
 
 namespace WaterSystem.Physics
@@ -42,7 +42,7 @@ namespace WaterSystem.Physics
         [NonSerialized] public Data.WaveOutputData[] WaveResults;
         private float3[] _velocity; // voxel velocity for buoyancy
 
-        [SerializeField] Collider[] colliders; // colliders attached ot this object
+        [SerializeField] Collider[] colliders; // colliders attached to this object
         private Rigidbody _rb;
         private DebugDrawing[] _debugInfo; // For drawing force gizmos
         [NonSerialized] public float PercentSubmerged;
@@ -81,7 +81,7 @@ namespace WaterSystem.Physics
 
         private void SetupVoxels()
         {
-            if (_buoyancyType is BuoyancyType.NonPhysicalVoxel or BuoyancyType.PhysicalVoxel)
+            if (_buoyancyType == BuoyancyType.NonPhysicalVoxel || _buoyancyType == BuoyancyType.PhysicalVoxel)
             {
                 SliceIntoVoxels();
             }
@@ -111,9 +111,7 @@ namespace WaterSystem.Physics
             // The object must have a Collider
             colliders = GetComponentsInChildren<Collider>();
             if (colliders.Length != 0)
-            {
                 return;
-            }
 
             colliders = new Collider[1];
             colliders[0] = gameObject.AddComponent<BoxCollider>();
@@ -127,18 +125,18 @@ namespace WaterSystem.Physics
 #if STATIC_EVERYTHING
             var dt = 0.0f;
 #else
-            float dt = Time.deltaTime;
+            var dt = Time.deltaTime;
 #endif
             switch (_buoyancyType)
             {
                 case BuoyancyType.NonPhysical:
                     {
-                        Transform t = transform;
-                        Vector3 vec = t.position;
+                        var t = transform;
+                        var vec = t.position;
                         _samplePoints[0] = vec;
                         vec.y = WaveResults[0].Position.y + waterLevelOffset;
                         t.position = vec;
-                        Vector3 up = t.up;
+                        var up = t.up;
                         t.up = Vector3.Slerp(up, WaveResults[0].Normal, dt);
                         break;
                     }
@@ -160,7 +158,7 @@ namespace WaterSystem.Physics
 
         private void FixedUpdate()
         {
-            float submergedAmount = 0f;
+            var submergedAmount = 0f;
 
             switch (_buoyancyType)
             {
@@ -170,11 +168,8 @@ namespace WaterSystem.Physics
                         //Debug.Log("new pass: " + gameObject.name);
                         UnityPhysics.autoSyncTransforms = false;
 
-                        int voxelCount = _voxels.Length;
-                        for (int i = 0; i < voxelCount; i++)
-                        {
+                        for (var i = 0; i < _voxels.Length; i++)
                             BuoyancyForce(_samplePoints[i], _velocity[i], WaveResults[i].Position.y + waterLevelOffset, ref submergedAmount, ref _debugInfo[i]);
-                        }
 
                         UnityPhysics.SyncTransforms();
                         UnityPhysics.autoSyncTransforms = true;
@@ -208,7 +203,8 @@ namespace WaterSystem.Physics
             {
                 _samplePoints.Dispose();
             }
-            if (_buoyancyType is BuoyancyType.Physical or BuoyancyType.PhysicalVoxel)
+
+            if (_buoyancyType == BuoyancyType.Physical || _buoyancyType == BuoyancyType.PhysicalVoxel)
             {
                 LocalToWorldJob.Cleanup(_guid);
             }
@@ -217,11 +213,9 @@ namespace WaterSystem.Physics
         private void LocalToWorldConversion()
         {
             if (_buoyancyType != BuoyancyType.Physical && _buoyancyType != BuoyancyType.PhysicalVoxel)
-            {
                 return;
-            }
 
-            Matrix4x4 transformMatrix = transform.localToWorldMatrix;
+            var transformMatrix = transform.localToWorldMatrix;
             LocalToWorldJob.ScheduleJob(_guid, transformMatrix);
         }
 
@@ -232,15 +226,14 @@ namespace WaterSystem.Physics
             debug.Force = Vector3.zero;
 
             if (position.y - voxelResolution >= waterHeight)
-            {
                 return;
-            }
 
-            float k = math.clamp(waterHeight - (position.y - voxelResolution), 0f, 1f);
+            var k = math.clamp(waterHeight - (position.y - voxelResolution), 0f, 1f);
 
             submergedAmount += k / _voxels.Length;
 
-            float3 force = Dampner * _rb.mass * -velocity + math.sqrt(k) * _localArchimedesForce;
+            var localDampingForce = Dampner * _rb.mass * -velocity;
+            var force = localDampingForce + math.sqrt(k) * _localArchimedesForce;
             _rb.AddForceAtPosition(force, position);
 
             debug.Force = force; // For drawing force Gizmos
@@ -256,48 +249,44 @@ namespace WaterSystem.Physics
 
         private void GetVelocityPoints()
         {
-            int voxelCount = _voxels.Length;
-            for (int i = 0; i < voxelCount; i++) { _velocity[i] = _rb.GetPointVelocity(_samplePoints[i]); }
+            for (var i = 0; i < _voxels.Length; i++) { _velocity[i] = _rb.GetPointVelocity(_samplePoints[i]); }
         }
 
         private void SliceIntoVoxels()
         {
-            Transform t = transform;
-            Quaternion rot = t.rotation;
-            Vector3 pos = t.position;
-            Vector3 size = t.localScale;
+            var t = transform;
+            t.GetPositionAndRotation(out var pos, out var rot);
+            var size = t.localScale;
             t.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             t.localScale = Vector3.one;
 
             _voxels = null;
-            List<Vector3> points = new List<Vector3>();
+            using var _0 = UnityEngine.Pool.ListPool<Vector3>.Get(out var points);
 
-            Bounds rawBounds = VoxelBounds();
+            var rawBounds = VoxelBounds();
             _voxelBounds = rawBounds;
             _voxelBounds.size = RoundVector(rawBounds.size, voxelResolution);
-            for (float ix = -_voxelBounds.extents.x; ix < _voxelBounds.extents.x; ix += voxelResolution)
+            for (var ix = -_voxelBounds.extents.x; ix < _voxelBounds.extents.x; ix += voxelResolution)
             {
-                for (float iy = -_voxelBounds.extents.y; iy < _voxelBounds.extents.y; iy += voxelResolution)
+                for (var iy = -_voxelBounds.extents.y; iy < _voxelBounds.extents.y; iy += voxelResolution)
                 {
-                    for (float iz = -_voxelBounds.extents.z; iz < _voxelBounds.extents.z; iz += voxelResolution)
+                    for (var iz = -_voxelBounds.extents.z; iz < _voxelBounds.extents.z; iz += voxelResolution)
                     {
-                        float res = voxelResolution * 0.5f;
-                        Vector3 p = new Vector3(res + ix, res + iy, res + iz) + _voxelBounds.center;
+                        var res = voxelResolution * 0.5f;
+                        var p = new Vector3(res + ix, res + iy, res + iz) + _voxelBounds.center;
 
-                        bool inside = false;
-                        int collidersLength = colliders.Length;
-                        for (int i = 0; i < collidersLength; i++)
+                        var inside = false;
+                        foreach (var t1 in colliders)
                         {
-                            if (PointIsInsideCollider(colliders[i], p))
+                            if (PointIsInsideCollider(t1, p))
                             {
                                 inside = true;
                                 break;
                             }
                         }
+
                         if (inside)
-                        {
                             points.Add(p);
-                        }
                     }
                 }
             }
@@ -314,12 +303,12 @@ namespace WaterSystem.Physics
 
         private Bounds VoxelBounds()
         {
-            Bounds bounds = colliders[0].bounds;
-            int collidersLength = colliders.Length;
-            for (int i = 0; i < collidersLength; i++)
+            var bounds = colliders[0].bounds;
+            foreach (var nextCollider in colliders)
             {
-                bounds.Encapsulate(colliders[i].bounds);
+                bounds.Encapsulate(nextCollider.bounds);
             }
+
             return bounds;
         }
 
@@ -330,31 +319,34 @@ namespace WaterSystem.Physics
 
         private static bool PointIsInsideCollider(Collider c, Vector3 p)
         {
-            return Vector3.Distance(UnityPhysics.ClosestPoint(p, c, Vector3.zero, Quaternion.identity), p) < 0.01f;
+            var cp = UnityPhysics.ClosestPoint(p, c, Vector3.zero, Quaternion.identity);
+			return Vector3.Distance(cp, p) < 0.01f;
         }
 
         private void SetupPhysical()
         {
-            if (!TryGetComponent<Rigidbody>(out _rb))
+            if (!TryGetComponent(out _rb))
             {
                 _rb = gameObject.AddComponent<Rigidbody>();
 #if UNITY_EDITOR || DEBUG
                 Debug.LogWarning($"Buoyancy:Object \"{name}\" had no Rigidbody. Rigidbody has been added.");
 #endif
             }
+
             _rb.centerOfMass = centerOfMass + _voxelBounds.center;
             _baseDrag = _rb.drag;
             _baseAngularDrag = _rb.angularDrag;
 
             _velocity = new float3[_voxels.Length];
-            _localArchimedesForce = new float3(0f, WaterDensity * Mathf.Abs(UnityPhysics.gravity.y) * volume, 0f) / _voxels.Length;
+            var archimedesForceMagnitude = WaterDensity * Mathf.Abs(UnityPhysics.gravity.y) * volume;
+            _localArchimedesForce = new float3(0, archimedesForceMagnitude, 0) / _voxels.Length;
             LocalToWorldJob.SetupJob(_guid, _voxels, ref _samplePoints);
         }
 
         private void OnDrawGizmosSelected()
         {
             const float gizmoSize = 0.05f;
-            Transform t = transform;
+            var t = transform;
             Gizmos.matrix = t.localToWorldMatrix;
             Color c = Color.yellow;
 
@@ -362,7 +354,7 @@ namespace WaterSystem.Physics
             {
                 Gizmos.color = c;
 
-                foreach (Vector3 p in _voxels)
+                foreach (var p in _voxels)
                 {
                     Gizmos.DrawCube(p, new Vector3(gizmoSize, gizmoSize, gizmoSize));
                 }
@@ -380,38 +372,38 @@ namespace WaterSystem.Physics
                 {
                     Gizmos.DrawLine(new Vector3(x, y, -_voxelBounds.extents.z + center.z), new Vector3(x, y, _voxelBounds.extents.z + center.z));
                 }
+
                 for (float z = -_voxelBounds.extents.z; z < _voxelBounds.extents.z; z += voxelResolution)
                 {
                     Gizmos.DrawLine(new Vector3(-_voxelBounds.extents.x, y, z + center.z), new Vector3(_voxelBounds.extents.x, y, z + center.z));
                 }
             }
             else
-            {
                 _voxelBounds = VoxelBounds();
-            }
 
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(_voxelBounds.center + centerOfMass, 0.2f);
 
             Gizmos.matrix = Matrix4x4.identity;
 
-            if (_debugInfo == null) { return; }
-            foreach (DebugDrawing debug in _debugInfo)
+            if (_debugInfo != null)
             {
-                bool inWater = debug.Force.sqrMagnitude > 0f;
-                Gizmos.color = inWater ? Color.red : Color.cyan;
-                Gizmos.DrawCube(debug.Position, new Vector3(gizmoSize, gizmoSize, gizmoSize)); // drawCenter
-                Vector3 water = debug.Position;
-                water.y = debug.WaterHeight;
-                Gizmos.DrawLine(debug.Position, water); // draw the water line
-                Gizmos.DrawSphere(water, gizmoSize * (inWater ? 2f : 1f));
-                if (_buoyancyType is BuoyancyType.Physical or BuoyancyType.PhysicalVoxel)
+                foreach (DebugDrawing debug in _debugInfo)
                 {
-                    Gizmos.color = Color.red;
-                    Gizmos.DrawRay(debug.Position, debug.Force / _rb.mass); // draw force
+                    bool inWater = debug.Force.sqrMagnitude > 0f;
+                    Gizmos.color = inWater ? Color.red : Color.cyan;
+                    Gizmos.DrawCube(debug.Position, new Vector3(gizmoSize, gizmoSize, gizmoSize)); // drawCenter
+                    var water = debug.Position;
+                    water.y = debug.WaterHeight;
+                    Gizmos.DrawLine(debug.Position, water); // draw the water line
+                    Gizmos.DrawSphere(water, gizmoSize * (inWater ? 2f : 1f));
+                    if (_buoyancyType is BuoyancyType.Physical or BuoyancyType.PhysicalVoxel)
+                    {
+                        Gizmos.color = Color.red;
+                        Gizmos.DrawRay(debug.Position, debug.Force / _rb.mass); // draw force
+                    }
                 }
             }
-
         }
 
         private struct DebugDrawing

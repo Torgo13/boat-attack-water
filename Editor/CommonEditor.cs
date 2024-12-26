@@ -1,5 +1,5 @@
-using UnityEditor;
 using UnityEngine;
+using UnityEditor;
 
 namespace WaterSystem
 {
@@ -36,8 +36,8 @@ namespace WaterSystem
         [MenuItem(CreateMenuString + "Ocean", false, 10)]
         static void CreateOcean()
         {
-            GameObject gameObject = new GameObject("Ocean", typeof(Ocean));
-            Undo.RegisterCreatedObjectUndo(gameObject, $"Create {gameObject.name}");
+            var gameObject = new GameObject("Ocean", typeof(Ocean));
+            Undo.RegisterCreatedObjectUndo(gameObject, "Create " + gameObject.name);
             Selection.activeObject = gameObject;
         }
     }

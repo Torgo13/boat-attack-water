@@ -35,9 +35,7 @@ namespace WaterSystem
         private void Update()
         {
             if (transform.hasChanged)
-            {
                 UpdateSamplePoint();
-            }
 
             GerstnerWavesJobs.UpdateSamplePoints(ref _samplePosition, gameObject.GetInstanceID());
             GerstnerWavesJobs.GetData(gameObject.GetInstanceID(), ref _waveResults);
@@ -45,20 +43,17 @@ namespace WaterSystem
             CheckState();
 
             if (!Application.isPlaying)
-            {
                 return;
-            }
 
-            int collisionEventsCount = collisionEvents.Count;
-            for (int i = 0; i < collisionEventsCount; i++)
+            for (int i = 0, collisionEventsCount = collisionEvents.Count; i < collisionEventsCount; i++)
             {
                 if (_previousState != currentState)
                 {
                     collisionEvents[i].Invoke(currentState);
                 }
             }
-            int submergedEventsCount = submergedEvents.Count;
-            for (int i = 0; i < submergedEventsCount; i++)
+
+            for (int i = 0, submergedEventsCount = submergedEvents.Count; i < submergedEventsCount; i++)
             {
                 if (_prevSubmerged != _submerged)
                 {
@@ -73,6 +68,7 @@ namespace WaterSystem
             {
                 _samplePosition = new NativeArray<float3>(1, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             }
+
             _samplePosition[0] = transform.position;
         }
 
@@ -80,11 +76,18 @@ namespace WaterSystem
         {
             _previousState = currentState;
             _prevSubmerged = _submerged;
-            _submerged = math.dot(_waveResults[0].Normal, math.normalize((float3)transform.position - _waveResults[0].Position)) < 0.0f;
+            
+            var facing = math.dot(_waveResults[0].Normal, math.normalize((float3)transform.position - _waveResults[0].Position));
+            _submerged = facing < 0.0f;
 
-            currentState = _submerged
-                ? _prevSubmerged ? WaterEventType.Submerged : WaterEventType.Entered
-                : _prevSubmerged ? WaterEventType.Exited : WaterEventType.None;
+            if (_submerged)
+            {
+                currentState = _prevSubmerged ? WaterEventType.Submerged : WaterEventType.Entered;
+            }
+            else
+            {
+                currentState = _prevSubmerged ? WaterEventType.Exited : WaterEventType.None;
+            }
         }
 
         private void OnDestroy()
@@ -95,9 +98,7 @@ namespace WaterSystem
         private void Cleanup()
         {
             if (_samplePosition.IsCreated)
-            {
                 _samplePosition.Dispose();
-            }
         }
 
         private void OnDrawGizmosSelected()
@@ -121,7 +122,7 @@ namespace WaterSystem
             }
 
             Handles.color = color;
-            float3 normal = _waveResults[0].Position + _waveResults[0].Normal;
+            var normal = _waveResults[0].Position + _waveResults[0].Normal;
 
             Handles.DrawWireDisc(_waveResults[0].Position.xyz, _waveResults[0].Normal.xyz, 0.5f, 1f);
             Handles.DrawLine(_waveResults[0].Position.xyz, normal.xyz, 1f);

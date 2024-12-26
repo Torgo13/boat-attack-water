@@ -7,9 +7,10 @@ namespace WaterSystem
     {
         public static bool CanRender(GameObject water, Camera camera)
         {
-            if (camera.cameraType == CameraType.Preview ||
-                camera.orthographic || camera.fieldOfView < 5 ||
-                (camera.cullingMask & (1 << water.layer)) == 0)
+            if (camera.cameraType == CameraType.Preview
+                || camera.orthographic
+                || camera.fieldOfView < 5
+                || (camera.cullingMask & (1 << water.layer)) == 0)
             {
                 return false;
             }
@@ -20,6 +21,7 @@ namespace WaterSystem
                 return UnityEditor.SceneManagement.StageUtility.IsGameObjectRenderedByCamera(water, camera);
             }
 #endif
+
             return true;
         }
     }

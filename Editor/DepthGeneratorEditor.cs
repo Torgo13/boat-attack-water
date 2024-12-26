@@ -7,9 +7,7 @@ namespace WaterSystem
     public class DepthGeneratorEditor : Editor
     {
         private readonly GUIContent _generateButton = new GUIContent("Generate", "Generates the current depth tile.");
-
-        private readonly GUIContent _generateAllButton =
-            new GUIContent("Generate All", "Generates all the depth tiles in the scene.");
+        private readonly GUIContent _generateAllButton = new GUIContent("Generate All", "Generates all the depth tiles in the scene.");
 
         private SerializedProperty _size;
         private SerializedProperty _tileRes;

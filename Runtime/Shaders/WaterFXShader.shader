@@ -76,7 +76,8 @@ Shader "Boat Attack/Water/Buffer/Base"
 				half4 col = tex2D(_MainTex, input.uv);
 
 				half foamMask = col.r * input.color.r;
-				half disp = (col.a * 2 - 1) * input.color.a;
+				half disp = col.a * 2 - 1;
+				disp *= input.color.a;
 
 				half3 tNorm = half3(col.b, col.g, 1) * 2 - 1;
 
@@ -95,7 +96,8 @@ Shader "Boat Attack/Water/Buffer/Base"
 			ENDHLSL
 		}
 
-		/*Pass
+		/*
+		Pass
         {
             Name "ShadowCaster"
             Tags{"LightMode" = "ShadowCaster"}
@@ -122,6 +124,7 @@ Shader "Boat Attack/Water/Buffer/Base"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/SimpleLitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/ShadowCasterPass.hlsl"
             ENDHLSL
-        }*/
+        }
+		*/
 	}
 }

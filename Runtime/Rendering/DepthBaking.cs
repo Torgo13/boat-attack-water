@@ -28,7 +28,6 @@ namespace WaterSystem
             renderPassEvent = RenderPassEvent.AfterRendering;
         }
 
-
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             ConfigureInput(ScriptableRenderPassInput.Depth);
@@ -37,9 +36,7 @@ namespace WaterSystem
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             if (_mat == null)
-            {
                 return;
-            }
 
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, _profiler)) // makes sure we have profiling ability
@@ -60,8 +57,8 @@ namespace WaterSystem
 
         public static void CaptureDepth(int tileResolution, int size, Transform objTransform, LayerMask mask, float range, float offset)
         {
-            PackageInfo package = PackageInfo.FindForAssembly(Assembly.GetAssembly(typeof(DepthBaking)));
-            Shader depthCopyShader = AssetDatabase.LoadAssetAtPath<Shader>(
+            var package = PackageInfo.FindForAssembly(Assembly.GetAssembly(typeof(DepthBaking)));
+            var depthCopyShader = AssetDatabase.LoadAssetAtPath<Shader>(
                 $"{package.assetPath}/Runtime/Shaders/Utility/SceneDepth.shadergraph");
 
             if (depthCopyShader == null)
@@ -76,9 +73,9 @@ namespace WaterSystem
             YOffset = offset;
             CreateDepthCamera(out Camera depthCam, objTransform.position, size, mask);
 
-            RenderTexture buffer = RenderTexture.GetTemporary(tileResolution, tileResolution, 24, RenderTextureFormat.ARGB32,
+            var buffer = RenderTexture.GetTemporary(tileResolution, tileResolution, 24, RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Linear);
-            RenderTexture bufferDepth = RenderTexture.GetTemporary(tileResolution, tileResolution, 0, RenderTextureFormat.R8);
+            var bufferDepth = RenderTexture.GetTemporary(tileResolution, tileResolution, 0, RenderTextureFormat.R8);
 
             DepthSave pass = new DepthSave(depthCopyShader, bufferDepth);
 
@@ -86,9 +83,7 @@ namespace WaterSystem
             RenderPipelineManager.beginCameraRendering += (context, camera) =>
             {
                 if (camera == depthCam)
-                {
                     depthCam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(pass);
-                }
             };
 
             depthCam.targetTexture = buffer;
@@ -97,19 +92,13 @@ namespace WaterSystem
             AsyncGPUReadback.Request(bufferDepth, 0, TextureFormat.R8, GetData);
 
             if (buffer)
-            {
                 RenderTexture.ReleaseTemporary(buffer);
-            }
 
             if (bufferDepth)
-            {
                 RenderTexture.ReleaseTemporary(bufferDepth);
-            }
 
             if (depthCam)
-            {
                 Object.DestroyImmediate(depthCam.gameObject);
-            }
         }
 
         private static void GetData(AsyncGPUReadbackRequest obj)
@@ -122,9 +111,9 @@ namespace WaterSystem
                 return;
             }
 
-            NativeArray<float> data = obj.GetData<float>();
+            var data = obj.GetData<float>();
 
-            Texture2D tex = new Texture2D(obj.width, obj.height, TextureFormat.R8, true);
+            var tex = new Texture2D(obj.width, obj.height, TextureFormat.R8, true);
             tex.SetPixelData(data, 0);
             tex.Apply();
             SaveTile(tex.EncodeToPNG());
@@ -134,21 +123,19 @@ namespace WaterSystem
 
         static void SaveTile(byte[] data)
         {
-            Scene activeScene = DepthGenerator.Current.gameObject.scene;
+            var activeScene = DepthGenerator.Current.gameObject.scene;
             //var sceneName = activeScene.name.Split('.')[0];
-            string path = activeScene.path.Split('.')[0];
+            var path = activeScene.path.Split('.')[0];
             if (!Directory.Exists(path))
-            {
                 Directory.CreateDirectory(path);
-            }
 
-            string filename = $"{DepthGenerator.Current.gameObject.name}_DepthTile.png";
+            var filename = $"{DepthGenerator.Current.gameObject.name}_DepthTile.png";
             File.WriteAllBytes($"{path}/{filename}", data);
 
             AssetDatabase.Refresh();
 
-            TextureImporter import = (TextureImporter)AssetImporter.GetAtPath($"{path}/{filename}");
-            TextureImporterSettings settings = new TextureImporterSettings();
+            var import = (TextureImporter)AssetImporter.GetAtPath($"{path}/{filename}");
+            var settings = new TextureImporterSettings();
             import.ReadTextureSettings(settings);
             settings.textureType = TextureImporterType.SingleChannel;
             settings.readable = true;
@@ -162,7 +149,7 @@ namespace WaterSystem
         static void CreateDepthCamera(out Camera camera, Vector3 position, float size, LayerMask mask)
         {
             //Generate the camera
-            GameObject go = new GameObject("depthCamera") { hideFlags = HideFlags.HideAndDontSave }; //create the cameraObject
+            var go = new GameObject("depthCamera") { hideFlags = HideFlags.HideAndDontSave }; //create the cameraObject
             Camera cam = go.AddComponent<Camera>();
 
             // setup camera props
@@ -177,12 +164,12 @@ namespace WaterSystem
             cam.cullingMask = mask;
 
             // transform
-            Transform t = cam.transform;
+            var t = cam.transform;
             t.position = position + Vector3.up * YOffset;
             t.up = Vector3.forward; //face the camera down
 
             // setup additional data
-            UniversalAdditionalCameraData additionalCamData = cam.GetUniversalAdditionalCameraData();
+            var additionalCamData = cam.GetUniversalAdditionalCameraData();
             additionalCamData.renderShadows = false;
             additionalCamData.requiresColorOption = CameraOverrideOption.Off;
             additionalCamData.requiresDepthOption = CameraOverrideOption.On;
