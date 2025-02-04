@@ -62,8 +62,6 @@ namespace WaterSystem
         private Texture2D _rampTexture;
 
         // Shader props
-        private static readonly int CameraRoll = Shader.PropertyToID("_CameraRoll");
-        private static readonly int InvViewProjection = Shader.PropertyToID("_InvViewProjection");
         private static readonly int FoamMap = Shader.PropertyToID("_FoamMap");
         private static readonly int SurfaceMap = Shader.PropertyToID("_SurfaceMap");
         private static readonly int WaveHeight = Shader.PropertyToID("_WaveHeight");
@@ -94,7 +92,7 @@ namespace WaterSystem
             {
 #if UNITY_EDITOR || DEBUG
                 Debug.LogError("Multiple Ocean Components cannot exist in tandem");
-#endif // UNITY_EDITOR || DEBUG
+#endif // DEBUG
                 //SafeDestroy(this);
             }
         }
@@ -130,9 +128,8 @@ namespace WaterSystem
             waveBuffer?.Dispose();
 
             // pass cleanup
-            _infiniteWaterPass = null;
-
             _waterBufferPass?.Cleanup();
+            _infiniteWaterPass?.Cleanup();
             _causticsPass?.Cleanup();
 
             PlanarReflections.Cleanup();
@@ -165,11 +162,6 @@ namespace WaterSystem
 
             urpData.scriptableRenderer.EnqueuePass(_waterBufferPass);
             urpData.scriptableRenderer.EnqueuePass(_causticsPass);
-
-            var roll = cam.transform.localEulerAngles.z;
-            Shader.SetGlobalFloat(CameraRoll, roll);
-            Shader.SetGlobalMatrix(InvViewProjection,
-                (GL.GetGPUProjectionMatrix(cam.projectionMatrix, false) * cam.worldToCameraMatrix).inverse);
 
             // Water matrix
             const float quantizeValue = 6.25f;
@@ -397,15 +389,14 @@ namespace WaterSystem
                     hideFlags = HideFlags.HideAndDontSave
                 };
 
-                NativeArray<Color32> cols = _rampTexture.GetPixelData<Color32>(0);
+                NativeArray<Color> cols = _rampTexture.GetPixelData<Color>(0);
                 for (var i = 0; i < rampRes; i++)
                 {
                     float temp = i / (float)rampRes;
-                    cols[i] = new Color32(
-                        (byte)(255f * Mathf.LinearToGammaSpace(settingsData._shoreFoamProfile.Evaluate(temp))), // Foam shore
-                        (byte)(255f * Mathf.LinearToGammaSpace(settingsData._waveFoamProfile.Evaluate(temp))),  // Foam Gerstner waves
-                        (byte)(255f * Mathf.LinearToGammaSpace(settingsData._waveDepthProfile.Evaluate(temp))), // Depth Gerstner waves
-                        255);
+                    cols[i] = new Color(
+                        Mathf.LinearToGammaSpace(settingsData._shoreFoamProfile.Evaluate(temp)), // Foam shore
+                        Mathf.LinearToGammaSpace(settingsData._waveFoamProfile.Evaluate(temp)),  // Foam Gerstner waves
+                        Mathf.LinearToGammaSpace(settingsData._waveDepthProfile.Evaluate(temp))); // Depth Gerstner waves
                 }
 
                 _rampTexture.Apply();

@@ -117,7 +117,7 @@ namespace WaterSystem.Physics
             colliders[0] = gameObject.AddComponent<BoxCollider>();
 #if UNITY_EDITOR || DEBUG
             Debug.LogError($"Buoyancy:Object \"{name}\" had no coll. BoxCollider has been added.");
-#endif
+#endif // DEBUG
         }
 
         private void Update()
@@ -330,7 +330,7 @@ namespace WaterSystem.Physics
                 _rb = gameObject.AddComponent<Rigidbody>();
 #if UNITY_EDITOR || DEBUG
                 Debug.LogWarning($"Buoyancy:Object \"{name}\" had no Rigidbody. Rigidbody has been added.");
-#endif
+#endif // DEBUG
             }
 
             _rb.centerOfMass = centerOfMass + _voxelBounds.center;

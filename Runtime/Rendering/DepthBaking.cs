@@ -65,7 +65,7 @@ namespace WaterSystem
             {
 #if UNITY_EDITOR || DEBUG
                 Debug.LogError("Failed to load SceneDepth shader for baking.");
-#endif
+#endif // DEBUG
                 return;
             }
 
@@ -107,7 +107,7 @@ namespace WaterSystem
             {
 #if UNITY_EDITOR || DEBUG
                 Debug.LogError("Depth save failed.");
-#endif
+#endif // DEBUG
                 return;
             }
 

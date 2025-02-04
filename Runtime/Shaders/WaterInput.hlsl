@@ -13,7 +13,7 @@ half _WaveHeight;
 half _MaxDepth;
 half _MaxWaveHeight;
 half4 _BoatAttack_Water_DepthCamParams;
-float4x4 _InvViewProjection;
+//float4x4 _InvViewProjection;
 half3 _SSR_Settings;
 
 #define SSR_STEP_SIZE _SSR_Settings.x

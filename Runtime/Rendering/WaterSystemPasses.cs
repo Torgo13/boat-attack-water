@@ -8,18 +8,18 @@ namespace WaterSystem.Rendering
 
     public class WaterFxPass : ScriptableRenderPass
     {
-        private static readonly int WaterBufferA = Shader.PropertyToID("_WaterBufferA");
-        private static readonly int WaterBufferB = Shader.PropertyToID("_WaterBufferB");
+        private readonly int WaterBufferA = Shader.PropertyToID("_WaterBufferA");
+        private readonly int WaterBufferB = Shader.PropertyToID("_WaterBufferB");
 
 #if UNITY_2022_1_OR_NEWER
-        RTHandle[] multiTargets = new RTHandle[2];
+        readonly RTHandle[] multiTargets = new RTHandle[2];
         private RTHandle m_BufferTargetA, m_BufferTargetB;
         private RTHandle m_BufferTargetDepth;
 #else
         private int m_BufferTargetA, m_BufferTargetB;
 #endif
 
-        //private const string k_RenderWaterFXTag = "Render Water FX";
+        private const string k_RenderWaterFXTag = "Render Water FX";
         private readonly ShaderTagId m_WaterFXShaderTag = new ShaderTagId("WaterFX");
 
         // r = foam mask
@@ -27,21 +27,23 @@ namespace WaterSystem.Rendering
         // b = normal.z
         // a = displacement
         private readonly Color m_ClearColor = new Color(0.0f, 0.5f, 0.5f, 0.5f);
+        private readonly bool supportsARGBHalf;
 
         private FilteringSettings m_FilteringSettings;
 
         public WaterFxPass()
         {
-            //profilingSampler = new ProfilingSampler(k_RenderWaterFXTag);
+            profilingSampler = new ProfilingSampler(k_RenderWaterFXTag);
             // Only render transparent objects
             m_FilteringSettings = new FilteringSettings(RenderQueueRange.transparent);
             renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
+            supportsARGBHalf = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBHalf);
         }
 
         // Calling Configure since we are wanting to render into a RenderTexture and control cleat
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
-            RenderTextureDescriptor td = GetRTD(cameraTextureDescriptor.width, cameraTextureDescriptor.height);
+            RenderTextureDescriptor td = GetRTD(cameraTextureDescriptor.width / 2, cameraTextureDescriptor.height / 2);
             //float resolutionScale = GamingIsLove.Makinom.Maki.Game.Variables.GetFloat("resolutionScale");
             //Vector2 scaleFactor = new Vector2(resolutionScale, resolutionScale);
 
@@ -83,9 +85,7 @@ namespace WaterSystem.Rendering
 
         private RenderTextureDescriptor GetRTD(int width, int height)
         {
-            var format = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBHalf)
-                ? RenderTextureFormat.ARGBHalf
-                : RenderTextureFormat.Default;
+            var format = supportsARGBHalf ? RenderTextureFormat.ARGBHalf : RenderTextureFormat.Default;
             
             return new RenderTextureDescriptor(width, height, format, 0)
             {
@@ -115,16 +115,22 @@ namespace WaterSystem.Rendering
 
     public class InfiniteWaterPass : ScriptableRenderPass
     {
-        private Mesh infiniteMesh;
-        private Shader infiniteShader;
+        private readonly Mesh infiniteMesh;
+        private readonly Shader infiniteShader;
         private Material infiniteMaterial;
-        private static readonly int BumpScale = Shader.PropertyToID("_BumpScale");
+        private readonly SphericalHarmonicsL2[] lightProbes = new SphericalHarmonicsL2[1];
+        private readonly int BumpScale = Shader.PropertyToID("_BumpScale");
 
         public InfiniteWaterPass(Mesh mesh, Shader shader)
         {
-            if (mesh) infiniteMesh = mesh;
-            if (shader) infiniteShader = shader;
+            infiniteMesh = mesh;
+            infiniteShader = shader;
             renderPassEvent = RenderPassEvent.BeforeRenderingTransparents;
+        }
+
+        public void Cleanup()
+        {
+            CoreUtils.Destroy(infiniteMaterial);
         }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -133,14 +139,14 @@ namespace WaterSystem.Rendering
 
             if (cam.cameraType != CameraType.Game &&
                 cam.cameraType != CameraType.SceneView ||
-                cam.name.Contains("Reflections"))
+                cam.name.Contains("Reflections", System.StringComparison.OrdinalIgnoreCase))
                 return;
 
             if (infiniteMesh == null)
             {
 #if UNITY_EDITOR || DEBUG
                 Debug.LogError("Infinite Water Pass Mesh is missing.");
-#endif
+#endif // DEBUG
                 return;
             }
 
@@ -150,7 +156,7 @@ namespace WaterSystem.Rendering
                     infiniteMaterial = new Material(infiniteShader);
             }
 
-            if (!infiniteMaterial || !infiniteMesh)
+            if (!infiniteMaterial)
                 return;
 
             CommandBuffer cmd = CommandBufferPool.Get();
@@ -165,7 +171,8 @@ namespace WaterSystem.Rendering
                 var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
                 // Setup the CommandBuffer and draw the mesh with the infinite water material and matrix
                 MaterialPropertyBlock matBloc = new MaterialPropertyBlock();
-                matBloc.CopySHCoefficientArraysFrom(new[] { probe });
+                lightProbes[0] = probe;
+                matBloc.CopySHCoefficientArraysFrom(lightProbes);
                 cmd.DrawMesh(infiniteMesh, matrix, infiniteMaterial, 0, 0, matBloc);
             }
 
@@ -181,11 +188,11 @@ namespace WaterSystem.Rendering
     public class WaterCausticsPass : ScriptableRenderPass
     {
         private const string k_RenderWaterCausticsTag = "Render Water Caustics";
-        private ProfilingSampler m_WaterCaustics_Profile = new ProfilingSampler(k_RenderWaterCausticsTag);
+        private readonly ProfilingSampler m_WaterCaustics_Profile = new ProfilingSampler(k_RenderWaterCausticsTag);
         private readonly Material WaterCausticMaterial;
-        private static Mesh m_mesh;
-        private static readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
-        private static readonly int WaterLevel = Shader.PropertyToID("_WaterLevel");
+        private Mesh m_mesh;
+        private readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
+        private readonly int WaterLevel = Shader.PropertyToID("_WaterLevel");
 
         public WaterCausticsPass(Material material)
         {
@@ -233,10 +240,7 @@ namespace WaterSystem.Rendering
 
         public void Cleanup()
         {
-            if (m_mesh != null)
-            {
-                CoreUtils.Destroy(m_mesh);
-            }
+            CoreUtils.Destroy(m_mesh);
         }
 
         private Mesh GenerateCausticsMesh(float size, bool flat = true)
