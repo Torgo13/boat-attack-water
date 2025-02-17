@@ -29,7 +29,7 @@ namespace WaterSystem
             }
         }
 
-        public static void SetupJob(int guid, Vector3[] positions, ref NativeArray<float3> output)
+        public static void SetupJob(int guid, NativeList<Vector3> positions, ref NativeArray<float3> output)
         {
             var jobData = new TransformLocalToWorld
             {

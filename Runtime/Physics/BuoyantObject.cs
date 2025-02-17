@@ -37,7 +37,8 @@ namespace WaterSystem.Physics
         private int _guid; // GUID for the height system
         private float3 _localArchimedesForce;
 
-        private Vector3[] _voxels; // voxel position
+        readonly
+        private NativeList<Vector3> _voxels = new NativeList<Vector3>(Allocator.Persistent); // voxel position
         private NativeArray<float3> _samplePoints; // sample points for height calc
         [NonSerialized] public Data.WaveOutputData[] WaveResults;
         private float3[] _velocity; // voxel velocity for buoyancy
@@ -50,7 +51,7 @@ namespace WaterSystem.Physics
         [ContextMenu("Initialize")]
         private void Init()
         {
-            _voxels = null;
+            _voxels.Clear();
 
             switch (_buoyancyType)
             {
@@ -87,8 +88,8 @@ namespace WaterSystem.Physics
             }
             else
             {
-                _voxels = new Vector3[1];
-                _voxels[0] = centerOfMass;
+                _voxels.Clear();
+                _voxels.Add(centerOfMass);
             }
         }
 
@@ -204,6 +205,11 @@ namespace WaterSystem.Physics
                 _samplePoints.Dispose();
             }
 
+            if (_voxels.IsCreated)
+            {
+                _voxels.Dispose();
+            }
+
             if (_buoyancyType == BuoyancyType.Physical || _buoyancyType == BuoyancyType.PhysicalVoxel)
             {
                 LocalToWorldJob.Cleanup(_guid);
@@ -260,8 +266,7 @@ namespace WaterSystem.Physics
             t.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             t.localScale = Vector3.one;
 
-            _voxels = null;
-            using var _0 = UnityEngine.Pool.ListPool<Vector3>.Get(out var points);
+            _voxels.Clear();
 
             var rawBounds = VoxelBounds();
             _voxelBounds = rawBounds;
@@ -286,12 +291,11 @@ namespace WaterSystem.Physics
                         }
 
                         if (inside)
-                            points.Add(p);
+                            _voxels.Add(p);
                     }
                 }
             }
 
-            _voxels = points.ToArray();
             t.SetPositionAndRotation(pos, rot);
             t.localScale = size;
             volume = Mathf.Min(rawBounds.size.x * rawBounds.size.y * rawBounds.size.z, Mathf.Pow(voxelResolution, 3f) * _voxels.Length);
@@ -350,7 +354,7 @@ namespace WaterSystem.Physics
             Gizmos.matrix = t.localToWorldMatrix;
             Color c = Color.yellow;
 
-            if (_voxels != null)
+            if (_voxels.IsCreated)
             {
                 Gizmos.color = c;
 

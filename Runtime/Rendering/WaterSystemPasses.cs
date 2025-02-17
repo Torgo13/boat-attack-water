@@ -247,15 +247,16 @@ namespace WaterSystem.Rendering
         {
             size *= 0.5f;
 
-            using var _0 = UnityEngine.Pool.ListPool<Vector3>.Get(out var verts);
-            verts.Add(new Vector3(-size, flat ? 0f : -size, flat ? -size : 0f));
-            verts.Add(new Vector3(size, flat ? 0f : -size, flat ? -size : 0f));
-            verts.Add(new Vector3(-size, flat ? 0f : size, flat ? size : 0f));
-            verts.Add(new Vector3(size, flat ? 0f : size, flat ? size : 0f));
+            var verts = new Unity.Collections.NativeArray<Vector3>(4, Unity.Collections.Allocator.Temp);
+            verts[0] = new Vector3(-size, flat ? 0f : -size, flat ? -size : 0f);
+            verts[1] = new Vector3( size, flat ? 0f : -size, flat ? -size : 0f);
+            verts[2] = new Vector3(-size, flat ? 0f :  size, flat ?  size : 0f);
+            verts[3] = new Vector3( size, flat ? 0f :  size, flat ?  size : 0f);
 
-            using var _1 = UnityEngine.Pool.ListPool<int>.Get(out var tris);
+            using var _0 = UnityEngine.Pool.ListPool<ushort>.Get(out var tris);
             if (tris.Capacity < 6)
                 tris.Capacity = 6;
+
             tris.Add(0);
             tris.Add(2);
             tris.Add(1);
@@ -263,13 +264,17 @@ namespace WaterSystem.Rendering
             tris.Add(3);
             tris.Add(1);
 
-            using var _2 = UnityEngine.Pool.ListPool<Vector2>.Get(out var uvs);
-            uvs.Add(new Vector2(0f, 0f));
-            uvs.Add(new Vector2(1f, 0f));
-            uvs.Add(new Vector2(0f, 1f));
-            uvs.Add(new Vector2(1f, 1f));
+            var uvs = new Unity.Collections.NativeArray<Vector2>(4, Unity.Collections.Allocator.Temp);
+            uvs[0] = new Vector2(0f, 0f);
+            uvs[1] = new Vector2(1f, 0f);
+            uvs[2] = new Vector2(0f, 1f);
+            uvs[3] = new Vector2(1f, 1f);
 
-            Mesh m = new Mesh();
+            Mesh m = new Mesh()
+            {
+                indexFormat = IndexFormat.UInt16,
+            };
+
             m.SetVertices(verts);
             m.SetTriangles(tris, 0);
             m.SetUVs(0, uvs);
