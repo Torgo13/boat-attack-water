@@ -13,7 +13,9 @@ half _WaveHeight;
 half _MaxDepth;
 half _MaxWaveHeight;
 half4 _BoatAttack_Water_DepthCamParams;
-//float4x4 _InvViewProjection;
+/*
+float4x4 _InvViewProjection;
+*/
 half3 _SSR_Settings;
 
 #define SSR_STEP_SIZE _SSR_Settings.x
@@ -23,9 +25,11 @@ half3 _SSR_Settings;
 SAMPLER(sampler_ScreenTextures_point_clamp);
 #if defined(_REFLECTION_PLANARREFLECTION)
 TEXTURE2D(_PlanarReflectionTexture);
-/*#else
+/*
+#else
 TEXTURECUBE(_CubemapTexture);
-SAMPLER(sampler_CubemapTexture);*/
+SAMPLER(sampler_CubemapTexture);
+*/
 #endif
 TEXTURE2D(_WaterBufferA);
 TEXTURE2D(_WaterBufferB);
@@ -93,7 +97,9 @@ struct WaterInputData
     float2 reflectionUV;
     float2 refractionUV;
     float4 detailUV;
-    //float4 shadowCoord;
+    /*
+    float4 shadowCoord;
+    */
     half4 waterBufferA;
     half4 waterBufferB;
     half fogCoord;
@@ -107,7 +113,9 @@ struct WaterLighting
     half3 directLighting;
     half3 ambientLighting;
     half3 sss;
-    //half3 shadow;
+    /*
+    half3 shadow;
+    */
 };
 
 #endif // WATER_INPUT_INCLUDED

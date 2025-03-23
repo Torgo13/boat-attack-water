@@ -1,4 +1,6 @@
-using System;
+﻿using System;
+using Unity.Collections;
+using Unity.Mathematics;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -8,12 +10,12 @@ using UnityEngine.Rendering.Universal;
 using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 using WaterSystem.Rendering;
-using Unity.Collections;
-using Unity.Mathematics;
 
 namespace WaterSystem
 {
-    //[ExecuteAlways, DisallowMultipleComponent]
+    /*
+    [ExecuteAlways, DisallowMultipleComponent]
+    */
     [AddComponentMenu("URP Water System/Ocean")]
     public class Ocean : MonoBehaviour
     {
@@ -90,7 +92,7 @@ namespace WaterSystem
             }
             else if (_instance != this)
             {
-#if UNITY_EDITOR || DEBUG
+#if DEBUG
                 Debug.LogError("Multiple Ocean Components cannot exist in tandem");
 #endif // DEBUG
                 //SafeDestroy(this);
@@ -116,6 +118,9 @@ namespace WaterSystem
 
         private void OnDestroy()
         {
+            if (GerstnerWavesJobs._waveData.IsCreated)
+                GerstnerWavesJobs._waveData.Dispose();
+            
             if (_instance == this)
                 _instance = null;
         }
@@ -176,7 +181,7 @@ namespace WaterSystem
             var blendDist = (settingsData.distanceBlend + 10) / 100f;
 
             var matrix = Matrix4x4.TRS(newPos, Quaternion.identity, Vector3.one * blendDist); // transform.localToWorldMatrix;
-
+            
             foreach (var mesh in resources.defaultWaterMeshes)
             {
                 Graphics.DrawMesh(mesh,
@@ -193,6 +198,7 @@ namespace WaterSystem
             }
         }
 
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private static void SafeDestroy(Object o)
         {
             if (Application.isPlaying)
@@ -251,6 +257,7 @@ namespace WaterSystem
             }
         }
 
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
         public void FragWaveNormals(bool toggle)
         {
             var mat = GetComponent<Renderer>().sharedMaterial;
@@ -269,6 +276,7 @@ namespace WaterSystem
                 {
                     _reflectionTypes = Enum.GetValues(typeof(Data.ReflectionType)).Length;
                 }
+
                 return _reflectionTypes;
             }
         }
@@ -346,10 +354,10 @@ namespace WaterSystem
             if (_useComputeBuffer)
             {
                 Shader.EnableKeyword("USE_STRUCTURED_BUFFER");
-                if (waveBuffer != null)
-                    waveBuffer.Dispose();
-
-                //waveBuffer = new ComputeBuffer(waveCount, Unity.Collections.LowLevel.Unsafe.UnsafeUtility.SizeOf<Data.Wave>());
+                waveBuffer?.Dispose();
+                /*
+                waveBuffer = new ComputeBuffer(waveCount, Unity.Collections.LowLevel.Unsafe.UnsafeUtility.SizeOf<Data.Wave>());
+                */
                 waveBuffer = new ComputeBuffer(waveCount, 12); // Data.Wave has 3 floats
                 waveBuffer.SetData(GerstnerWavesJobs._waveData);
                 Shader.SetGlobalBuffer(WaveDataBuffer, waveBuffer);
@@ -358,23 +366,25 @@ namespace WaterSystem
             {
                 Shader.DisableKeyword("USE_STRUCTURED_BUFFER");
                 int waveDataLength = GerstnerWavesJobs._waveData.Length;
-                using var _0 = UnityEngine.Pool.ListPool<Vector4>.Get(out var waveData);
+                UnityEngine.Pool.ListPool<Vector4>.Get(out var waveData);
                 if (waveData.Capacity < waveDataLength)
                     waveData.Capacity = waveDataLength;
 
                 for (int i = 0; i < waveDataLength; i++)
                 {
-                    float3 wave = GerstnerWavesJobs._waveData[i];
-                    waveData.Add(new Vector4(wave.x, wave.y, wave.z));
+                    Vector3 wave = GerstnerWavesJobs._waveData[i];
+                    waveData.Add(wave);
                 }
 
                 Shader.SetGlobalVectorArray(WaveData, waveData);
+                UnityEngine.Pool.ListPool<Vector4>.Release(waveData);
             }
         }
 
         private void GenerateColorRamp()
         {
             _rampTexture = resources.defaultFoamRamp;
+
             //TODO Fix null error when _rampTexture isn't allocated in resources
             if (_rampTexture == null)
             {
@@ -389,7 +399,7 @@ namespace WaterSystem
                     hideFlags = HideFlags.HideAndDontSave
                 };
 
-                NativeArray<Color> cols = _rampTexture.GetPixelData<Color>(0);
+                var cols = _rampTexture.GetPixelData<Color>(mipLevel: 0);
                 for (var i = 0; i < rampRes; i++)
                 {
                     float temp = i / (float)rampRes;

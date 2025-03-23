@@ -139,12 +139,13 @@ namespace WaterSystem.Rendering
 
             if (cam.cameraType != CameraType.Game &&
                 cam.cameraType != CameraType.SceneView ||
-                cam.name.Contains("Reflections", System.StringComparison.OrdinalIgnoreCase))
+                cam.name.Contains("Reflections",
+                    System.StringComparison.OrdinalIgnoreCase))
                 return;
 
             if (infiniteMesh == null)
             {
-#if UNITY_EDITOR || DEBUG
+#if DEBUG
                 Debug.LogError("Infinite Water Pass Mesh is missing.");
 #endif // DEBUG
                 return;
@@ -169,7 +170,7 @@ namespace WaterSystem.Rendering
                 // Create the matrix to position the caustics mesh.
                 var position = cam.transform.position;
                 var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
-                // Setup the CommandBuffer and draw the mesh with the infinite water material and matrix
+                // Set up the CommandBuffer and draw the mesh with the infinite water material and matrix
                 MaterialPropertyBlock matBloc = new MaterialPropertyBlock();
                 lightProbes[0] = probe;
                 matBloc.CopySHCoefficientArraysFrom(lightProbes);
@@ -230,7 +231,7 @@ namespace WaterSystem.Rendering
                 //position.y = 0; // TODO should read a global 'water height' variable.
                 position.y = waterLevel;
                 var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
-                // Setup the CommandBuffer and draw the mesh with the caustic material and matrix
+                // Set up the CommandBuffer and draw the mesh with the caustic material and matrix
                 cmd.DrawMesh(m_mesh, matrix, WaterCausticMaterial, 0, 0);
             }
 

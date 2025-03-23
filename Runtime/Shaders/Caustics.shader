@@ -49,11 +49,12 @@ Shader "Boat Attack/Water/Caustics"
             TEXTURE2D(_AbsorptionScatteringRamp); SAMPLER(sampler_AbsorptionScatteringRamp);
 
             CBUFFER_START(UnityPerMaterial)
-            float _Size;
+            half _Size;
             half _WaterLevel;
             half _MaxDepth;
             half _BlendDistance;
             CBUFFER_END
+
             half4x4 _MainLightDir;
 
             // World Position reconstruction
@@ -91,13 +92,15 @@ Shader "Boat Attack/Water/Caustics"
             
             real4 frag (Varyings input) : SV_Target
             {
-                float4 screenPos = input.screenpos / input.screenpos.w;
+                float2 screenPos = input.screenpos.xy / input.screenpos.w;
                 
                 // Get depth
                 real depth = SampleSceneDepth(screenPos.xy);
                 
                 // Get main light
+                /*
                 Light MainLight = GetMainLight();
+                */
                 
                 // Reconstruct Position of objects in depth map
                 float4 WorldPos = float4(ReconstructWorldPos(screenPos.xy, depth), 1.0);
@@ -115,7 +118,7 @@ Shader "Boat Attack/Water/Caustics"
                 float2 uv = WorldPos.xz * 0.025 + time * 0.25;
                 float waveOffset = SAMPLE_TEXTURE2D(_CausticMap, sampler_CausticMap, uv).w - 0.5;
 
-                float2 causticUV = CausticUVs(LightUVs, waveOffset);
+                float2 causticUV = CausticUVs(LightUVs.xy, waveOffset);
 
                 float LodLevel = abs(WorldPos.y - _WaterLevel) * 4 / _BlendDistance;
                 float4 A = SAMPLE_TEXTURE2D_LOD(_CausticMap, sampler_CausticMap, causticUV + time, LodLevel);
@@ -124,13 +127,14 @@ Shader "Boat Attack/Water/Caustics"
                 float CausticsDriver = (A.z * B.z) * 10 + A.z + B.z;
                 
                 // Mask caustics from above water and fade below
-                float level = _WaterLevel - 0.25;
-                half upperMask = saturate(-WorldPos.y + level);
-                half lowerMask = saturate((WorldPos.y - level) / _BlendDistance + _BlendDistance);
+                half level = _WaterLevel - half(0.25);
+                half mask = -WorldPos.y + level;
+                half upperMask = saturate(mask);
+                half lowerMask = saturate(-mask / _BlendDistance + _BlendDistance);
                 CausticsDriver *= min(upperMask, lowerMask);
                 
                 // Fake light dispersion
-                half3 Caustics = CausticsDriver * half3(A.w, B.w, B.x) * MainLight.color;
+                half3 Caustics = CausticsDriver * half3(A.w, B.w, B.x) * _MainLightColor.rgb;
                 
 #ifdef _DEBUG
                 return real4(Caustics, 1.0);

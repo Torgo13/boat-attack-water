@@ -1,12 +1,11 @@
 #if UNITY_EDITOR
 using System.IO;
 using System.Reflection;
-using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using UnityEngine.SceneManagement;
+
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace WaterSystem
@@ -63,7 +62,7 @@ namespace WaterSystem
 
             if (depthCopyShader == null)
             {
-#if UNITY_EDITOR || DEBUG
+#if DEBUG
                 Debug.LogError("Failed to load SceneDepth shader for baking.");
 #endif // DEBUG
                 return;
@@ -71,14 +70,18 @@ namespace WaterSystem
 
             Range = range;
             YOffset = offset;
-            CreateDepthCamera(out Camera depthCam, objTransform.position, size, mask);
+            CreateDepthCamera(out var depthCam, objTransform.position, size, mask);
+
+            /*
+            if (depthCopyShader == null)
+                return;
+            */
 
             var buffer = RenderTexture.GetTemporary(tileResolution, tileResolution, 24, RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Linear);
             var bufferDepth = RenderTexture.GetTemporary(tileResolution, tileResolution, 0, RenderTextureFormat.R8);
 
             DepthSave pass = new DepthSave(depthCopyShader, bufferDepth);
-
 
             RenderPipelineManager.beginCameraRendering += (context, camera) =>
             {
@@ -105,7 +108,7 @@ namespace WaterSystem
         {
             if (obj.hasError)
             {
-#if UNITY_EDITOR || DEBUG
+#if DEBUG
                 Debug.LogError("Depth save failed.");
 #endif // DEBUG
                 return;
@@ -124,7 +127,9 @@ namespace WaterSystem
         static void SaveTile(byte[] data)
         {
             var activeScene = DepthGenerator.Current.gameObject.scene;
-            //var sceneName = activeScene.name.Split('.')[0];
+            /*
+            var sceneName = activeScene.name.Split('.')[0];
+            */
             var path = activeScene.path.Split('.')[0];
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);

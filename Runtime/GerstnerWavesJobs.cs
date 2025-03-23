@@ -64,7 +64,7 @@ namespace WaterSystem
 
             for (int i = 0; i < depthProfileCount; i++)
             {
-                _depthProfile[i] = ocean.settingsData._waveDepthProfile.Evaluate((float)i / depthProfileCount);
+                _depthProfile[i] = ocean.settingsData._waveDepthProfile.Evaluate(i / (float)depthProfileCount);
             }
 
             threadCount = SystemInfo.processorCount / 2;

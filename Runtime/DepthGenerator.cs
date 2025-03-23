@@ -14,7 +14,9 @@ using UnityEngine.SceneManagement;
 
 namespace WaterSystem
 {
-    //[ExecuteAlways]
+    /*
+    [ExecuteAlways]
+    */
     [AddComponentMenu("URP Water System/Depth Generator")]
     public class DepthGenerator : MonoBehaviour
     {
@@ -23,7 +25,9 @@ namespace WaterSystem
         public static DepthData _depthData;
         // Global depth values
         public static NativeArray<half> _globalDepthValues;
-        //private static int _depthValueCount;
+        /*
+        private static int _depthValueCount;
+        */
 
         // Static vars
         private static readonly int Depth = Shader.PropertyToID("_Depth");
@@ -32,11 +36,15 @@ namespace WaterSystem
         [HideInInspector, SerializeField] private Mesh mesh;
         [HideInInspector, SerializeField] private Material debugMaterial;
         [HideInInspector, SerializeField] private Shader shader;
-        //private Camera _depthCam;
+        /*
+        private Camera _depthCam;
+        */
         private Material _material;
         private Transform _transform;
         private Vector3 _positionWS;
-        //[SerializeField] private half[] _values;
+        /*
+        [SerializeField] private half[] _values;
+        */
 
         public int size = 250;
         public int tileRes = 1024;
@@ -65,28 +73,35 @@ namespace WaterSystem
             {
 #if UNITY_EDITOR
                 var activeScene = gameObject.scene;
-                //var sceneName = activeScene.name.Split('.')[0];
+                /*
+                var sceneName = activeScene.name.Split('.')[0];
+                */
                 var path = activeScene.path.Split('.')[0];
                 var file = $"{gameObject.name}_DepthTile.png";
                 try
                 {
                     depthTile = AssetDatabase.LoadAssetAtPath<Texture2D>($"{path}/{file}");
-                    //StoreDepthValues();
+                    /*
+                    StoreDepthValues();
+                    */
                 }
                 catch (Exception e)
                 {
                     Console.WriteLine($"Failed to load {GetType().Name} tile, please make sure it is generated:{e}");
                     throw;
                 }
-#elif DEBUG
+#else
+#if DEBUG
                 Debug.LogWarning($"{GetType().Name} on gameobject {gameObject.name} is missing tile texture");
+#endif // DEBUG
 #endif
             }
 
             _depthData = CompileDepthData();
             if (!_globalDepthValues.IsCreated)
             {
-                _globalDepthValues = new NativeArray<half>(tileRes * tileRes, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                _globalDepthValues = new NativeArray<half>(tileRes * tileRes, Allocator.Persistent,
+                    NativeArrayOptions.UninitializedMemory);
             }
 
             StoreDepthValues();
@@ -184,7 +199,7 @@ namespace WaterSystem
             {
                 position.x -= DepthData.PositionWS.x;
                 position.z -= DepthData.PositionWS.z;
-                position /= DepthData.Size;
+                position *= 1.0f / DepthData.Size;
                 position += 0.5f;
 
                 return position.zx;

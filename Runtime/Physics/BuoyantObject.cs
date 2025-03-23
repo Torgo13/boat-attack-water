@@ -27,7 +27,7 @@ namespace WaterSystem.Physics
         public float voxelResolution = 0.51f; // voxel resolution, represents the half size of a voxel when creating the voxel representation
         private Bounds _voxelBounds; // bounds of the voxels
         public Vector3 centerOfMass = Vector3.zero; // Center Of Mass offset
-        public float waterLevelOffset;
+        public float waterLevelOffset = 0f;
 
         private const float Dampner = 0.005f;
         private const float WaterDensity = 1000;
@@ -116,7 +116,7 @@ namespace WaterSystem.Physics
 
             colliders = new Collider[1];
             colliders[0] = gameObject.AddComponent<BoxCollider>();
-#if UNITY_EDITOR || DEBUG
+#if DEBUG
             Debug.LogError($"Buoyancy:Object \"{name}\" had no coll. BoxCollider has been added.");
 #endif // DEBUG
         }
@@ -321,7 +321,7 @@ namespace WaterSystem.Physics
             return new Vector3(Mathf.Ceil(vec.x / rounding) * rounding, Mathf.Ceil(vec.y / rounding) * rounding, Mathf.Ceil(vec.z / rounding) * rounding);
         }
 
-        private static bool PointIsInsideCollider(Collider c, Vector3 p)
+        private bool PointIsInsideCollider(Collider c, Vector3 p)
         {
             var cp = UnityPhysics.ClosestPoint(p, c, Vector3.zero, Quaternion.identity);
 			return Vector3.Distance(cp, p) < 0.01f;
@@ -332,7 +332,7 @@ namespace WaterSystem.Physics
             if (!TryGetComponent(out _rb))
             {
                 _rb = gameObject.AddComponent<Rigidbody>();
-#if UNITY_EDITOR || DEBUG
+#if DEBUG
                 Debug.LogWarning($"Buoyancy:Object \"{name}\" had no Rigidbody. Rigidbody has been added.");
 #endif // DEBUG
             }

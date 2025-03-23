@@ -54,14 +54,16 @@ namespace WaterSystem.Physics
         {
             if (!samplePositions.IsCreated)
             {
-                samplePositions = new NativeArray<float3>(arrayCount.x * arrayCount.y, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                samplePositions = new NativeArray<float3>(arrayCount.x * arrayCount.y, Allocator.Persistent,
+                    NativeArrayOptions.UninitializedMemory);
             }
 
             if (samplePositions.Length != arrayCount.x * arrayCount.y)
             {
                 GerstnerWavesJobs.RemoveSamplePoints(gameObject.GetInstanceID());
                 samplePositions.Dispose();
-                samplePositions = new NativeArray<float3>(arrayCount.x * arrayCount.y, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                samplePositions = new NativeArray<float3>(arrayCount.x * arrayCount.y, Allocator.Persistent,
+                    NativeArrayOptions.UninitializedMemory);
             }
 
             float3 pos = 0;

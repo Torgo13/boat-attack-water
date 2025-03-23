@@ -66,7 +66,8 @@ namespace WaterSystem
         {
             if (!_samplePosition.IsCreated)
             {
-                _samplePosition = new NativeArray<float3>(1, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                _samplePosition = new NativeArray<float3>(1, Allocator.Persistent,
+                    NativeArrayOptions.UninitializedMemory);
             }
 
             _samplePosition[0] = transform.position;

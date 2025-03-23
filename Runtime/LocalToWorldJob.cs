@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
@@ -12,7 +12,7 @@ namespace WaterSystem
         private static readonly Dictionary<int, TransformLocalToWorld> Data = new Dictionary<int, TransformLocalToWorld>();
 
         [BurstCompile]
-        struct LocalToWorldConvertJob : IJobParallelFor
+        struct LocalToWorldConvertJob : IJobFor
         {
             [WriteOnly] public NativeArray<float3> PositionsWorld;
             [ReadOnly] public Matrix4x4 Matrix;
@@ -55,7 +55,7 @@ namespace WaterSystem
                 Matrix = localToWorld
             };
 
-            Data[guid].Handle = Data[guid].Job.Schedule(Data[guid].PositionsLocal.Length, 32);
+            Data[guid].Handle = Data[guid].Job.ScheduleParallel(Data[guid].PositionsLocal.Length, 32, default);
             Data[guid].Processing = true;
             JobHandle.ScheduleBatchedJobs();
         }

@@ -1,3 +1,4 @@
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -39,6 +40,17 @@ namespace WaterSystem
                     depthGen.CaptureDepth();
                 }
             }
+
+            /*
+            if (GUILayout.Button(generateAllButton, GUILayout.Width(200)))
+            {
+                var generators = FindObjectsOfType<DepthGenerator>();
+                foreach (var generator in generators)
+                {
+                    generator.CaptureDepth();
+                }
+            }
+            */
 
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();

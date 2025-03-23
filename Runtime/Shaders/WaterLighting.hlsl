@@ -119,7 +119,7 @@ float2 ViewSpacePosToUV(float3 pos)
     return ComputeNormalizedDeviceCoordinates(pos, UNITY_MATRIX_P);
 }
 
-half RayMarch(float3 origin, float3 direction, out half2 sampleUV)
+void RayMarch(float3 origin, float3 direction, out half2 sampleUV, out half valid)
 {
     direction *= SSR_STEP_SIZE;
     
@@ -133,18 +133,20 @@ half RayMarch(float3 origin, float3 direction, out half2 sampleUV)
         if(sampleUV.x > 1 || sampleUV.x < 0 || sampleUV.y > 1 || sampleUV.y < 0)
             break;
 
-        float deviceDepth = GetDepth(sampleUV); if (!deviceDepth) continue;
+        float deviceDepth = GetDepth(sampleUV);
+        if (!deviceDepth)
+            continue;
+
         float3 samplePos = ViewPosFromDepth(sampleUV, deviceDepth);
 
         if(distance(samplePos.z, origin.z) > length(direction) * SSR_THICKNESS) continue;
         
         if(samplePos.z > origin.z)
         {
-            return half(1);
+            valid = 1;
+            return;
         }
     }
-
-    return half(0);
 }
 
 half3 CubemapReflection(float3 viewDirectionWS, float3 positionWS, float3 normalWS)
@@ -155,34 +157,36 @@ half3 CubemapReflection(float3 viewDirectionWS, float3 positionWS, float3 normal
 
 half3 SampleReflections(float3 normalWS, float3 positionWS, float3 viewDirectionWS, half2 screenUV)
 {
-    half3 reflection = GlossyEnvironmentReflection(reflect(-viewDirectionWS, normalWS), 0, 1); //CubemapReflection(viewDirectionWS, positionWS, normalWS);
-    //half2 refOffset = 0;
+    half3 reflection = 0;
+
 /*
 #if _REFLECTION_CUBEMAP
     half3 reflectVector = reflect(-viewDirectionWS, normalWS);
     reflection = SAMPLE_TEXTURECUBE_LOD(_CubemapTexture, sampler_CubemapTexture, reflectVector, 0).rgb;
+#elif _REFLECTION_PROBES
 */
 #if _REFLECTION_PROBES
-    //reflection = CubemapReflection(viewDirectionWS, positionWS, normalWS);
+    reflection = CubemapReflection(viewDirectionWS, positionWS, normalWS);
 #elif _REFLECTION_PLANARREFLECTION
     half2 reflectionUV = screenUV + half2(normalWS.zx) * half2(0.05, 0.2);
     half4 reflectionRGBA = SAMPLE_TEXTURE2D(_PlanarReflectionTexture, sampler_ScreenTextures_linear_clamp, reflectionUV);//planar reflection
 
-    //half3 backup = CubemapReflection(viewDirectionWS, positionWS, normalWS);
-    reflection = lerp(reflection, reflectionRGBA.rgb, reflectionRGBA.a);
+    half3 backup = CubemapReflection(viewDirectionWS, positionWS, normalWS);
+    reflection = lerp(backup, reflectionRGBA.rgb, reflectionRGBA.a);
 //#elif _REFLECTION_SSR
 #else
     half2 uv;
+    half valid = 0;
 
     float3 positionVS = TransformWorldToView(positionWS);
     float3 normalVS = TransformWorldToViewDir(normalWS);
     
     float3 pivot = reflect(positionVS, normalVS);
-    half valid = RayMarch(positionVS, pivot, uv);
+    RayMarch(positionVS, pivot, uv, valid);
     half3 ssr = SAMPLE_TEXTURE2D(_CameraOpaqueTexture, sampler_ScreenTextures_linear_clamp, uv).rgb;
 
-    //half3 backup = CubemapReflection(viewDirectionWS, positionWS, normalWS);
-    reflection = lerp(reflection, ssr, valid);
+    half3 backup = CubemapReflection(viewDirectionWS, positionWS, normalWS);
+    reflection = lerp(backup, ssr, valid);
 #endif
     //do backup
     return reflection;
