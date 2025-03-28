@@ -6,11 +6,6 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.Experimental.Rendering;
 
-#if CUSTOM_URP
-#else
-using System.Reflection;
-#endif
-
 #pragma warning disable CS0618 // Type or member is obsolete
 
 namespace WaterSystem.Rendering
@@ -60,6 +55,7 @@ namespace WaterSystem.Rendering
 
         public static float m_planeOffset;
 
+        readonly
         private static Dictionary<Camera, PlanarReflectionObjects> _reflectionObjects = new Dictionary<Camera, PlanarReflectionObjects>();
         private static readonly int _planarReflectionTextureId = Shader.PropertyToID("_PlanarReflectionTexture");
 
@@ -124,7 +120,6 @@ namespace WaterSystem.Rendering
             // Render reflection
             // Reflect camera around reflection plane
             var reflectionPlane = new Vector4(normal.x, normal.y, normal.z, -m_planeOffset);
-
             var reflection = Matrix4x4.identity * Matrix4x4.Scale(new Vector3(1, -1, 1));
 
             CalculateReflectionMatrix(ref reflection, reflectionPlane);
@@ -244,13 +239,8 @@ namespace WaterSystem.Rendering
 
         private static RenderTexture CreateTexture(int2 res)
         {
-            //bool useHdr10 = RenderingUtils.SupportsRenderTextureFormat(RenderTextureFormat.RGB111110Float);
-            //RenderTextureFormat hdrFormat = useHdr10 ? RenderTextureFormat.RGB111110Float : RenderTextureFormat.DefaultHDR;
-#if UNITY_ANDROID || UNITY_IOS
-            const RenderTextureFormat hdrFormat = RenderTextureFormat.ARGBHalf;
-#else
-            const RenderTextureFormat hdrFormat = RenderTextureFormat.ARGBFloat;
-#endif // UNITY_ANDROID || UNITY_IOS
+            bool useHdr10 = RenderingUtils.SupportsRenderTextureFormat(RenderTextureFormat.ARGB2101010);
+            RenderTextureFormat hdrFormat = useHdr10 ? RenderTextureFormat.ARGB2101010 : RenderTextureFormat.DefaultHDR;
 
             return RenderTexture.GetTemporary(res.x, res.y, 0,
                 GraphicsFormatUtility.GetGraphicsFormat(hdrFormat, true));

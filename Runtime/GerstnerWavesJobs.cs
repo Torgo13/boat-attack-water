@@ -21,7 +21,7 @@ namespace WaterSystem
 
         //Details for Buoyant Objects
 
-        // worldspace sampling position buffer
+        // world space sampling position buffer
         private static NativeArray<float3> _samplePositionsA;
         private static NativeArray<float3> _samplePositionsB;
 
@@ -208,7 +208,7 @@ namespace WaterSystem
         }
 
         // Gerstner Height C# Job
-        [BurstCompile]
+        [BurstCompile(FloatPrecision.Low, FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
         internal struct HeightJob : IJobParallelFor
         {
             [NativeDisableParallelForRestriction]

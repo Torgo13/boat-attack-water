@@ -15,16 +15,16 @@ namespace WaterSystem
         struct LocalToWorldConvertJob : IJobFor
         {
             [WriteOnly] public NativeArray<float3> PositionsWorld;
-            [ReadOnly] public Matrix4x4 Matrix;
+            [ReadOnly] public float4x4 Matrix;
             [ReadOnly] public NativeArray<float3> PositionsLocal;
 
             // The code actually running on the job
             public void Execute(int i)
             {
-                var pos = float4.zero;
+                float4 pos = default;
                 pos.xyz = PositionsLocal[i];
                 pos.w = 1f;
-                pos = Matrix * pos;
+                pos = math.mul(Matrix, pos);
                 PositionsWorld[i] = pos.xyz;
             }
         }

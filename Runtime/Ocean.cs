@@ -1,5 +1,7 @@
 ﻿using System;
+using Unity.Burst;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -244,6 +246,7 @@ namespace WaterSystem
             }
         }
 
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void SetDebugMode(DebugShading mode)
         {
             if (mode != DebugShading.none)
@@ -418,31 +421,46 @@ namespace WaterSystem
         private void SetupWaves()
         {
             //create basic waves based off basic wave settings
-            var backupSeed = Random.state;
-            Random.InitState(settingsData.randomSeed);
             var basicWaves = settingsData._basicWaveSettings;
-            var a = basicWaves.amplitude;
-            var d = basicWaves.direction;
-            var l = basicWaves.wavelength;
             var numWave = basicWaves.waveCount;
             if (!GerstnerWavesJobs._waveData.IsCreated)
             {
-                GerstnerWavesJobs._waveData = new NativeArray<float3>(numWave, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                GerstnerWavesJobs._waveData = new NativeArray<float3>(numWave,
+                    Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             }
 
-            var r = 1f / numWave;
-
-            for (var i = 0; i < numWave; i++)
+            var setupWavesJob = new SetupWavesJob
             {
-                var p = Mathf.Lerp(0.1f, 1.9f, i * r);
-                var amp = a * p * Random.Range(0.66f, 1.24f);
-                var dir = d + Random.Range(-90f, 90f);
-                var len = Mathf.PI * 2f / (l * p * Random.Range(0.75f, 1.2f));
-                GerstnerWavesJobs._waveData[i] = new float3(amp, dir, len);
-                Random.InitState(settingsData.randomSeed + i + 1);
-            }
+                r = 1f / numWave,
+                a = basicWaves.amplitude,
+                d = basicWaves.direction,
+                l = basicWaves.wavelength,
+                randomSeed = settingsData.randomSeed,
+                waveData = GerstnerWavesJobs._waveData,
+            };
+            
+            setupWavesJob.RunByRef(numWave);
+        }
 
-            Random.state = backupSeed;
+        [BurstCompile(FloatPrecision.Low, FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
+        public struct SetupWavesJob : IJobFor
+        {
+            [ReadOnly] public float r;
+            [ReadOnly] public float a;
+            [ReadOnly] public float d;
+            [ReadOnly] public float l;
+            [ReadOnly] public int randomSeed;
+            [WriteOnly] public NativeArray<float3> waveData;
+            
+            public void Execute(int i)
+            {
+                var random = new Unity.Mathematics.Random((uint)(randomSeed + i + 1));
+                var p = math.lerp(0.1f, 1.9f, i * r);
+                var amp = a * p * random.NextFloat(0.66f, 1.24f);
+                var dir = d + random.NextFloat(-90f, 90f);
+                var len = math.PI2 / (l * p * random.NextFloat(0.75f, 1.2f));
+                waveData[i] = new float3(amp, dir, len);
+            }
         }
 
         [Serializable]

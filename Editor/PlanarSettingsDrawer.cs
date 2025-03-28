@@ -60,8 +60,8 @@ namespace WaterSystem.Rendering
             if (!obliqueProjection.boolValue)
             {
                 EditorGUILayout.HelpBox(
-                    "Disabling Oblique Projection will lead to objects refelcting below the water," +
-                    " only use this if you are having issue with certaint effects in the relfeciotns like Fog.",
+                    "Disabling Oblique Projection will lead to objects reflecting below the water," +
+                    " only use this if you are having issue with certain effects in the reflections like Fog.",
                     MessageType.Info);
             }
 

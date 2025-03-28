@@ -35,7 +35,7 @@ namespace WaterSystem
                     GUI.Box(box, GUIContent.none);
 
                 EditorGUILayout.LabelField($"{obj.name}", $"GUID:{registryEntry.Key}");
-                EditorGUILayout.LabelField($"indicies:{registryEntry.Value.x}-{registryEntry.Value.y}",
+                EditorGUILayout.LabelField($"indices:{registryEntry.Value.x}-{registryEntry.Value.y}",
                     $"size:{registryEntry.Value.y - registryEntry.Value.x}");
 
                 if (GUILayout.Button("Ping Object"))

@@ -83,7 +83,9 @@ Shader "Boat Attack/Water/InfiniteWater"
                 //half2 screenUV = i.screenPosition.xy / i.screenPosition.w; // screen UVs
 
                 half4 waterBufferA = WaterBufferA(screenUV.xy);
+				/*
                 half4 waterBufferB = WaterBufferB(screenUV.xy);
+                */
 
 				InfinitePlane plane = WorldPlane(i.viewDirectionWS, i.positionWS);
 				i.positionWS = plane.positionWS;

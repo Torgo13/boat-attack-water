@@ -19,7 +19,7 @@ namespace WaterSystem.Rendering
         private int m_BufferTargetA, m_BufferTargetB;
 #endif
 
-        private const string k_RenderWaterFXTag = "Render Water FX";
+        private const string k_RenderWaterFXTag = "WaterFX";
         private readonly ShaderTagId m_WaterFXShaderTag = new ShaderTagId("WaterFX");
 
         // r = foam mask
@@ -30,6 +30,7 @@ namespace WaterSystem.Rendering
         private readonly bool supportsARGBHalf;
 
         private FilteringSettings m_FilteringSettings;
+        private RenderTextureDescriptor td;
 
         public WaterFxPass()
         {
@@ -43,9 +44,10 @@ namespace WaterSystem.Rendering
         // Calling Configure since we are wanting to render into a RenderTexture and control cleat
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
-            RenderTextureDescriptor td = GetRTD(cameraTextureDescriptor.width / 2, cameraTextureDescriptor.height / 2);
-            //float resolutionScale = GamingIsLove.Makinom.Maki.Game.Variables.GetFloat("resolutionScale");
-            //Vector2 scaleFactor = new Vector2(resolutionScale, resolutionScale);
+            int width = cameraTextureDescriptor.width / 2;
+            int height = cameraTextureDescriptor.height / 2;
+            if (td.width != width || td.height != height)
+                td = GetRTD(width, height);
 
 #if UNITY_2022_1_OR_NEWER
             RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetA, td, FilterMode.Bilinear, name: "_WaterBufferA");
@@ -86,18 +88,15 @@ namespace WaterSystem.Rendering
         private RenderTextureDescriptor GetRTD(int width, int height)
         {
             var format = supportsARGBHalf ? RenderTextureFormat.ARGBHalf : RenderTextureFormat.Default;
+            UnityEngine.Experimental.Rendering.GraphicsFormat colorFormat =
+                SystemInfo.GetCompatibleFormat(UnityEngine.Experimental.Rendering.GraphicsFormatUtility.GetGraphicsFormat(
+                        format, RenderTextureReadWrite.Linear),
+                    UnityEngine.Experimental.Rendering.FormatUsage.Render);
             
-            return new RenderTextureDescriptor(width, height, format, 0)
+            return new RenderTextureDescriptor(width, height, colorFormat, depthBufferBits: 0, mipCount: 0)
             {
-                // dimension
-                dimension = TextureDimension.Tex2D,
-                msaaSamples = 1,
-                useMipMap = false,
-                autoGenerateMips = false,
-                stencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.None,
-                volumeDepth = 1,
                 sRGB = false,
-                memoryless = RenderTextureMemoryless.Depth
+                memoryless = RenderTextureMemoryless.Depth,
             };
         }
 
@@ -116,15 +115,15 @@ namespace WaterSystem.Rendering
     public class InfiniteWaterPass : ScriptableRenderPass
     {
         private readonly Mesh infiniteMesh;
-        private readonly Shader infiniteShader;
-        private Material infiniteMaterial;
+        private readonly Material infiniteMaterial;
         private readonly SphericalHarmonicsL2[] lightProbes = new SphericalHarmonicsL2[1];
+        readonly MaterialPropertyBlock matBloc = new MaterialPropertyBlock();
         private readonly int BumpScale = Shader.PropertyToID("_BumpScale");
 
         public InfiniteWaterPass(Mesh mesh, Shader shader)
         {
             infiniteMesh = mesh;
-            infiniteShader = shader;
+            infiniteMaterial = new Material(shader);
             renderPassEvent = RenderPassEvent.BeforeRenderingTransparents;
         }
 
@@ -151,15 +150,6 @@ namespace WaterSystem.Rendering
                 return;
             }
 
-            if (infiniteShader)
-            {
-                if (infiniteMaterial == null)
-                    infiniteMaterial = new Material(infiniteShader);
-            }
-
-            if (!infiniteMaterial)
-                return;
-
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, new ProfilingSampler("Infinite Water")))
             {
@@ -171,7 +161,6 @@ namespace WaterSystem.Rendering
                 var position = cam.transform.position;
                 var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
                 // Set up the CommandBuffer and draw the mesh with the infinite water material and matrix
-                MaterialPropertyBlock matBloc = new MaterialPropertyBlock();
                 lightProbes[0] = probe;
                 matBloc.CopySHCoefficientArraysFrom(lightProbes);
                 cmd.DrawMesh(infiniteMesh, matrix, infiniteMaterial, 0, 0, matBloc);
@@ -191,13 +180,15 @@ namespace WaterSystem.Rendering
         private const string k_RenderWaterCausticsTag = "Render Water Caustics";
         private readonly ProfilingSampler m_WaterCaustics_Profile = new ProfilingSampler(k_RenderWaterCausticsTag);
         private readonly Material WaterCausticMaterial;
-        private Mesh m_mesh;
+        private readonly Mesh m_mesh;
+        private Transform sunTransform;
         private readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
         private readonly int WaterLevel = Shader.PropertyToID("_WaterLevel");
 
         public WaterCausticsPass(Material material)
         {
             WaterCausticMaterial = material;
+            m_mesh = GenerateCausticsMesh(1000f);
         }
 
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
@@ -208,23 +199,29 @@ namespace WaterSystem.Rendering
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             var cam = renderingData.cameraData.camera;
-            // Stop the pass rendering in the preview or material missing
-            if (cam.cameraType != CameraType.Game || !WaterCausticMaterial)
+            // Stop the pass rendering in the preview
+            if (cam.cameraType != CameraType.Game)
                 return;
 
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, m_WaterCaustics_Profile))
             {
-                var sunMatrix = RenderSettings.sun != null
-                    ? RenderSettings.sun.transform.localToWorldMatrix
+                bool sunTransformFound = sunTransform != null;
+                if (!sunTransformFound)
+                {
+                    var sun = RenderSettings.sun;
+                    if (sun != null)
+                    {
+                        sunTransform = sun.transform;
+                    }
+                }
+                
+                var sunMatrix = sunTransformFound
+                    ? sunTransform.localToWorldMatrix
                     : Matrix4x4.TRS(Vector3.zero, Quaternion.Euler(-45f, 45f, 0f), Vector3.one);
                 WaterCausticMaterial.SetMatrix(MainLightDir, sunMatrix);
                 float waterLevel = Ocean.Instance.transform.position.y;
                 WaterCausticMaterial.SetFloat(WaterLevel, waterLevel);
-
-                // Create mesh if needed
-                if (!m_mesh)
-                    m_mesh = GenerateCausticsMesh(1000f);
 
                 // Create the matrix to position the caustics mesh.
                 var position = cam.transform.position;
@@ -271,7 +268,7 @@ namespace WaterSystem.Rendering
             uvs[2] = new Vector2(0f, 1f);
             uvs[3] = new Vector2(1f, 1f);
 
-            Mesh m = new Mesh()
+            Mesh m = new Mesh
             {
                 indexFormat = IndexFormat.UInt16,
             };
