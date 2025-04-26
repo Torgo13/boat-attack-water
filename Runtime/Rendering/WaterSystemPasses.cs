@@ -180,7 +180,7 @@ namespace WaterSystem.Rendering
         private const string k_RenderWaterCausticsTag = "Render Water Caustics";
         private readonly ProfilingSampler m_WaterCaustics_Profile = new ProfilingSampler(k_RenderWaterCausticsTag);
         private readonly Material WaterCausticMaterial;
-        private readonly Mesh m_mesh;
+        private Mesh m_mesh;
         private Transform sunTransform;
         private readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
         private readonly int WaterLevel = Shader.PropertyToID("_WaterLevel");
@@ -198,6 +198,9 @@ namespace WaterSystem.Rendering
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            if (m_mesh == null)
+                return;
+
             var cam = renderingData.cameraData.camera;
             // Stop the pass rendering in the preview
             if (cam.cameraType != CameraType.Game)
