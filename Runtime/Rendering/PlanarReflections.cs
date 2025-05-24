@@ -120,7 +120,7 @@ namespace WaterSystem.Rendering
             // Render reflection
             // Reflect camera around reflection plane
             var reflectionPlane = new Vector4(normal.x, normal.y, normal.z, -m_planeOffset);
-            var reflection = Matrix4x4.identity * Matrix4x4.Scale(new Vector3(1, -1, 1));
+            var reflection = new Matrix4x4(); //Matrix4x4.identity; * Matrix4x4.Scale(new Vector3(1, -1, 1));
 
             CalculateReflectionMatrix(ref reflection, reflectionPlane);
             var newPosition = ReflectPosition(realCamera.transform.position);
@@ -141,6 +141,7 @@ namespace WaterSystem.Rendering
         }
 
         // Calculates reflection matrix around the given plane
+        [Unity.Burst.BurstCompile(FloatMode = Unity.Burst.FloatMode.Fast)]
         private static void CalculateReflectionMatrix(ref Matrix4x4 reflectionMat, Vector4 plane)
         {
             reflectionMat.m00 = (1F - 2F * plane[0] * plane[0]);

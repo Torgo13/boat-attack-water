@@ -27,7 +27,7 @@ namespace WaterSystem.Rendering
         // b = normal.z
         // a = displacement
         private readonly Color m_ClearColor = new Color(0.0f, 0.5f, 0.5f, 0.5f);
-        private readonly bool supportsARGBHalf;
+        private readonly UnityEngine.Experimental.Rendering.GraphicsFormat colorFormat;
 
         private FilteringSettings m_FilteringSettings;
         private RenderTextureDescriptor td;
@@ -38,14 +38,36 @@ namespace WaterSystem.Rendering
             // Only render transparent objects
             m_FilteringSettings = new FilteringSettings(RenderQueueRange.transparent);
             renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
-            supportsARGBHalf = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBHalf);
+
+            var renderTextureFormat = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBHalf)
+                ? RenderTextureFormat.ARGBHalf
+                : RenderTextureFormat.Default;
+
+            var graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormatUtility.GetGraphicsFormat(
+                    renderTextureFormat, isSRGB: false);
+
+            colorFormat = SystemInfo.GetCompatibleFormat(graphicsFormat,
+                UnityEngine.Experimental.Rendering.FormatUsage.Render);
         }
 
-        // Calling Configure since we are wanting to render into a RenderTexture and control cleat
+#if !ZERO
+        // Calling Configure since we are wanting to render into a RenderTexture and control clear
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
+#else
+        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+#endif // ZERO
         {
+#if !ZERO
+#else
+            var cameraData = renderingData.cameraData;
+            var cameraTextureDescriptor = new RectInt(0, 0, cameraData.scaledWidth, cameraData.scaledHeight);
+            //var camera = cameraData.camera;
+            //var cameraTextureDescriptor = new RectInt(0, 0, camera.pixelWidth, camera.pixelHeight);
+#endif // ZERO
+
             int width = cameraTextureDescriptor.width / 2;
             int height = cameraTextureDescriptor.height / 2;
+
             if (td.width != width || td.height != height)
                 td = GetRTD(width, height);
 
@@ -87,12 +109,6 @@ namespace WaterSystem.Rendering
 
         private RenderTextureDescriptor GetRTD(int width, int height)
         {
-            var format = supportsARGBHalf ? RenderTextureFormat.ARGBHalf : RenderTextureFormat.Default;
-            UnityEngine.Experimental.Rendering.GraphicsFormat colorFormat =
-                SystemInfo.GetCompatibleFormat(UnityEngine.Experimental.Rendering.GraphicsFormatUtility.GetGraphicsFormat(
-                        format, RenderTextureReadWrite.Linear),
-                    UnityEngine.Experimental.Rendering.FormatUsage.Render);
-            
             return new RenderTextureDescriptor(width, height, colorFormat, depthBufferBits: 0, mipCount: 0)
             {
                 sRGB = false,
@@ -182,29 +198,35 @@ namespace WaterSystem.Rendering
         private readonly Material WaterCausticMaterial;
         private Mesh m_mesh;
         private Transform sunTransform;
+        private readonly float waterLevel;
         private readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
         private readonly int WaterLevel = Shader.PropertyToID("_WaterLevel");
 
         public WaterCausticsPass(Material material)
         {
             WaterCausticMaterial = material;
-            m_mesh = GenerateCausticsMesh(1000f);
+            var ocean = Ocean.Instance;
+            waterLevel = ocean != null
+                ? ocean.transform.position.y
+                : 2;
         }
 
+#if ZERO
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             ConfigureInput(ScriptableRenderPassInput.Depth);
         }
+#endif // ZERO
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            if (m_mesh == null)
-                return;
-
             var cam = renderingData.cameraData.camera;
             // Stop the pass rendering in the preview
             if (cam.cameraType != CameraType.Game)
                 return;
+
+            if (m_mesh == null)
+                m_mesh = GenerateCausticsMesh(1000f);
 
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, m_WaterCaustics_Profile))
@@ -223,7 +245,6 @@ namespace WaterSystem.Rendering
                     ? sunTransform.localToWorldMatrix
                     : Matrix4x4.TRS(Vector3.zero, Quaternion.Euler(-45f, 45f, 0f), Vector3.one);
                 WaterCausticMaterial.SetMatrix(MainLightDir, sunMatrix);
-                float waterLevel = Ocean.Instance.transform.position.y;
                 WaterCausticMaterial.SetFloat(WaterLevel, waterLevel);
 
                 // Create the matrix to position the caustics mesh.
@@ -244,7 +265,7 @@ namespace WaterSystem.Rendering
             CoreUtils.Destroy(m_mesh);
         }
 
-        private Mesh GenerateCausticsMesh(float size, bool flat = true)
+        private static Mesh GenerateCausticsMesh(float size, bool flat = true)
         {
             size *= 0.5f;
 
@@ -254,16 +275,13 @@ namespace WaterSystem.Rendering
             verts[2] = new Vector3(-size, flat ? 0f :  size, flat ?  size : 0f);
             verts[3] = new Vector3( size, flat ? 0f :  size, flat ?  size : 0f);
 
-            using var _0 = UnityEngine.Pool.ListPool<ushort>.Get(out var tris);
-            if (tris.Capacity < 6)
-                tris.Capacity = 6;
-
-            tris.Add(0);
-            tris.Add(2);
-            tris.Add(1);
-            tris.Add(2);
-            tris.Add(3);
-            tris.Add(1);
+            var tris = new Unity.Collections.NativeArray<ushort>(6, Unity.Collections.Allocator.Temp);
+            tris[0] = 0;
+            tris[1] = 2;
+            tris[2] = 1;
+            tris[3] = 2;
+            tris[4] = 3;
+            tris[5] = 1;
 
             var uvs = new Unity.Collections.NativeArray<Vector2>(4, Unity.Collections.Allocator.Temp);
             uvs[0] = new Vector2(0f, 0f);
@@ -277,7 +295,7 @@ namespace WaterSystem.Rendering
             };
 
             m.SetVertices(verts);
-            m.SetTriangles(tris, 0);
+            m.SetIndices(tris, MeshTopology.Triangles, submesh: 0);
             m.SetUVs(0, uvs);
             m.Optimize();
 

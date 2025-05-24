@@ -15,9 +15,9 @@ using WaterSystem.Rendering;
 
 namespace WaterSystem
 {
-    /*
+#if ZERO
     [ExecuteAlways, DisallowMultipleComponent]
-    */
+#endif // ZERO
     [AddComponentMenu("URP Water System/Ocean")]
     public class Ocean : MonoBehaviour
     {
@@ -53,6 +53,7 @@ namespace WaterSystem
 
         public DebugShading shadingDebug;
 
+#if ZERO
         // Render Passes
         public bool infiniteWater;
         private InfiniteWaterPass _infiniteWaterPass;
@@ -61,6 +62,7 @@ namespace WaterSystem
 
         // Runtime Materials
         private Material _causticMaterial;
+#endif // ZERO
 
         // Runtime Resources
         private Texture2D _rampTexture;
@@ -97,7 +99,8 @@ namespace WaterSystem
 #if DEBUG
                 Debug.LogError("Multiple Ocean Components cannot exist in tandem");
 #endif // DEBUG
-                //SafeDestroy(this);
+
+                SafeDestroy(this);
             }
         }
 
@@ -134,10 +137,12 @@ namespace WaterSystem
 
             waveBuffer?.Dispose();
 
+#if ZERO
             // pass cleanup
             _waterBufferPass?.Cleanup();
             _infiniteWaterPass?.Cleanup();
             _causticsPass?.Cleanup();
+#endif // ZERO
 
             PlanarReflections.Cleanup();
         }
@@ -150,6 +155,7 @@ namespace WaterSystem
             if (settingsData.refType == Data.ReflectionType.PlanarReflection)
                 PlanarReflections.Execute(src, cam);
 
+#if ZERO
             if (_causticMaterial == null)
             {
                 _causticMaterial = resources.causticMaterial;
@@ -169,6 +175,7 @@ namespace WaterSystem
 
             urpData.scriptableRenderer.EnqueuePass(_waterBufferPass);
             urpData.scriptableRenderer.EnqueuePass(_causticsPass);
+#endif // ZERO
 
             // Water matrix
             const float quantizeValue = 6.25f;
@@ -183,19 +190,20 @@ namespace WaterSystem
             var blendDist = (settingsData.distanceBlend + 10) / 100f;
 
             var matrix = Matrix4x4.TRS(newPos, Quaternion.identity, Vector3.one * blendDist); // transform.localToWorldMatrix;
-            
+            var layer = gameObject.layer;
+
             foreach (var mesh in resources.defaultWaterMeshes)
             {
                 Graphics.DrawMesh(mesh,
                     matrix,
                     resources.defaultSeaMaterial,
-                    gameObject.layer,
+                    layer,
                     cam,
-                    0,
-                    null,
+                    submeshIndex: 0,
+                    properties: null,
                     ShadowCastingMode.Off,
-                    false, //true,
-                    null,
+                    receiveShadows: false, //true,
+                    probeAnchor: null,
                     LightProbeUsage.Off);
             }
         }
@@ -358,22 +366,22 @@ namespace WaterSystem
             {
                 Shader.EnableKeyword("USE_STRUCTURED_BUFFER");
                 waveBuffer?.Dispose();
-                /*
+#if ZERO
                 waveBuffer = new ComputeBuffer(waveCount, Unity.Collections.LowLevel.Unsafe.UnsafeUtility.SizeOf<Data.Wave>());
-                */
+#else
                 waveBuffer = new ComputeBuffer(waveCount, 12); // Data.Wave has 3 floats
+#endif // ZERO
                 waveBuffer.SetData(GerstnerWavesJobs._waveData);
                 Shader.SetGlobalBuffer(WaveDataBuffer, waveBuffer);
             }
             else
             {
                 Shader.DisableKeyword("USE_STRUCTURED_BUFFER");
-                int waveDataLength = GerstnerWavesJobs._waveData.Length;
                 UnityEngine.Pool.ListPool<Vector4>.Get(out var waveData);
-                if (waveData.Capacity < waveDataLength)
-                    waveData.Capacity = waveDataLength;
+                if (waveData.Capacity < waveCount)
+                    waveData.Capacity = waveCount;
 
-                for (int i = 0; i < waveDataLength; i++)
+                for (int i = 0; i < waveCount; i++)
                 {
                     Vector3 wave = GerstnerWavesJobs._waveData[i];
                     waveData.Add(wave);
@@ -388,7 +396,6 @@ namespace WaterSystem
         {
             _rampTexture = resources.defaultFoamRamp;
 
-            //TODO Fix null error when _rampTexture isn't allocated in resources
             if (_rampTexture == null)
             {
                 const int rampCount = 2;
