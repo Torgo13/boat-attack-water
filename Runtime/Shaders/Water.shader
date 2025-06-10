@@ -37,6 +37,7 @@ Shader "Boat Attack/Water"
 			#pragma multi_compile_fragment _ _LIGHT_COOKIES
             //#pragma multi_compile _ _FORWARD_PLUS
 			//#pragma multi_compile _ SHADOWS_SHADOWMASK
+			#pragma multi_compile _ _VOXEL
 
 			//--------------------------------------
             // GPU Instancing

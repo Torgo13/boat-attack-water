@@ -81,6 +81,19 @@ namespace WaterSystem.Physics
                 positions = new Data.WaveOutputData[samplePositions.Length];
         }
 
+#if ZERO
+        public float3 GetHeight(int index, float3 samplePos)
+        {
+            var pos = positions[index];
+            //var depth = DepthGenerator.GetGlobalDepth(samplePos);
+            //pos.x = samplePos.x;
+            //pos.z = samplePos.z;
+            //pos.y *= math.saturate(Ocean.Instance.settingsData._waveDepthProfile.Evaluate(1-math.saturate(-depth / 20f)));
+            //pos.y += Ocean.Instance.transform.position.y;
+            return pos;
+        }
+#endif // ZERO
+
         private void OnDrawGizmos()
         {
             var colA = new Color(1f, 1f, 1f, 0.025f);

@@ -4,7 +4,7 @@ Shader "Boat Attack/Water/Caustics"
     {
         //Vector1_F3303B3C("Speed", Float) = 0.5
         _Size("Size", Float) = 0.25
-        [NoScaleOffset]_CausticMap("Caustics", 2D) = "white" {}
+        [MainTexture] [NoScaleOffset] _CausticMap("Caustics", 2D) = "white" {}
         _WaterLevel("WaterLevel", Float) = 0
         _BlendDistance("BlendDistance", Float) = 3
         //Vector1_CD857B77("CausticsRGB Split", Float) = 2
@@ -26,8 +26,10 @@ Shader "Boat Attack/Water/Caustics"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
-            //#pragma multi_compile _ _DEBUG
-            //#pragma multi_compile _ _STATIC_SHADER
+            /*
+            #pragma multi_compile _ _DEBUG
+            #pragma multi_compile _ _STATIC_SHADER
+            */
 
             #pragma vertex vert
             #pragma fragment frag

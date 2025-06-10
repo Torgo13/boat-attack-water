@@ -1,7 +1,7 @@
 #ifndef WATER_VOXEL_INCLUDED
 #define WATER_VOXEL_INCLUDED
 
-//#define SHADOWS_SCREEN 0
+#define SHADOWS_SCREEN 0
 
 #include "WaterInput.hlsl"
 #include "CommonUtilities.hlsl"
@@ -255,8 +255,10 @@ void InitializeInputData(Varyings input, out WaterInputData inputData, float2 sc
     depth.x = depth.x < 0 ? d : depth.x;
 
     inputData.detailUV = input.uv;
-
-    //inputData.shadowCoord = TransformWorldToShadowCoord(inputData.normalWS);
+    
+#ifdef MAIN_LIGHT_CALCULATE_SHADOWS
+    inputData.shadowCoord = TransformWorldToShadowCoord(inputData.normalWS);
+#endif // MAIN_LIGHT_CALCULATE_SHADOWS
 
     inputData.fogCoord = input.fogFactorNoise.x;
     inputData.depth = depth.x;

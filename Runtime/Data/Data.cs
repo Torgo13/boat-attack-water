@@ -22,9 +22,15 @@ namespace WaterSystem
         public class OceanSettings
         {
             // General
+#if ZERO
+            public GeometryType waterGeomType; // The type of geometry, either vertex offset or tessellation
+#endif // ZERO
             public ReflectionType refType = ReflectionType.ScreenSpaceReflection; // How the reflections are generated
-            public PlanarReflections.PlanarReflectionSettings planarSettings;
+            public PlanarReflections.PlanarReflectionSettings planarSettings = new PlanarReflections.PlanarReflectionSettings();
             public SSRSettings SsrSettings = new SSRSettings();
+#if ZERO
+            public bool isInfinite; // Is the water infinite
+#endif // ZERO
             public float distanceBlend = 100.0f;
             public int randomSeed = 3234;
 
@@ -37,6 +43,9 @@ namespace WaterSystem
             public Color _scatteringColor = new Color(0.0f, 0.085f, 0.1f);
 
             // Waves
+#if ZERO
+            public List<Wave> _waves = new List<Wave>();
+#endif // ZERO
             public bool _customWaves;
             public BasicWaves _basicWaveSettings = new BasicWaves(0.5f, 45.0f, 5.0f);
             public AnimationCurve _waveFoamProfile = AnimationCurve.Linear(0.02f, 0f, 0.98f, 1f);
@@ -54,11 +63,11 @@ namespace WaterSystem
         [Serializable]
         public class SSRSettings
         {
-            public SSRSteps Steps = SSRSteps.Low; //SSRSteps.Medium;
+            public SSRSteps Steps = SSRSteps.Low;
             [Range(0.01f, 1f)]
-            public float StepSize = 0.15f; //0.1f;
+            public float StepSize = 0.15f;
             [Range(0.25f, 3f)]
-            public float Thickness = 0.5f; //2f;
+            public float Thickness = 0.5f;
         }
 
         [Serializable]
@@ -90,6 +99,30 @@ namespace WaterSystem
                 wavelength = len;
             }
         }
+        
+#if ZERO
+        /// <summary>
+        /// Class to describe a single Gerstner Wave
+        /// </summary>
+        [Serializable]
+        public struct Wave
+        {
+            public float amplitude; // height of the wave in units(m)
+            public float direction; // direction the wave travels in degrees from Z+
+            public float wavelength; // distance between crest>crest
+            public float2 origin; // Omi directional point of origin
+            public float onmiDir; // Is omni?
+
+            public Wave(float amp, float dir, float length, float2 org, bool omni)
+            {
+                amplitude = amp;
+                direction = dir;
+                wavelength = length;
+                origin = org;
+                onmiDir = omni ? 1 : 0;
+            }
+        }
+#endif // ZERO
 
         /// <summary>
         /// The type of reflection source, custom cubemap, closest reflection probe, planar reflection
@@ -111,14 +144,46 @@ namespace WaterSystem
                     return KeyRefCubemap;
                 case ReflectionType.ReflectionProbe:
                     return KeyRefProbe;
-                case ReflectionType.ScreenSpaceReflection:
-                    return KeyRefSSR;
                 case ReflectionType.PlanarReflection:
                     return KeyRefPlanar;
+                case ReflectionType.ScreenSpaceReflection:
+                    return KeyRefSSR;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }
         }
+
+#if ZER0
+        /// <summary>
+        /// The type of geometry, either vertex offset or tessellation
+        /// </summary>
+        [Serializable]
+        public enum GeometryType
+        {
+            VertexOffset,
+            Tesselation
+        }
+
+        [Serializable]
+        public enum DebugShading
+        {
+            none,
+            normalWS,
+            Reflection,
+            Refraction,
+            Specular,
+            SSS,
+            Shadow,
+            Foam,
+            FoamMask,
+            WaterBufferA,
+            WaterBufferB,
+            Depth,
+            WaterDepth,
+            Fresnel,
+            Mesh,
+        }
+#endif // ZERO
 
         public struct WaveOutputData
         {

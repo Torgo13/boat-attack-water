@@ -211,12 +211,12 @@ namespace WaterSystem.Rendering
                 : 2;
         }
 
-#if ZERO
+#if RENDERPASS
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             ConfigureInput(ScriptableRenderPassInput.Depth);
         }
-#endif // ZERO
+#endif // RENDERPASS
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
@@ -249,9 +249,9 @@ namespace WaterSystem.Rendering
 
                 // Create the matrix to position the caustics mesh.
                 var position = cam.transform.position;
-                //position.y = 0; // TODO should read a global 'water height' variable.
                 position.y = waterLevel;
                 var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
+
                 // Set up the CommandBuffer and draw the mesh with the caustic material and matrix
                 cmd.DrawMesh(m_mesh, matrix, WaterCausticMaterial, 0, 0);
             }
@@ -263,6 +263,7 @@ namespace WaterSystem.Rendering
         public void Cleanup()
         {
             CoreUtils.Destroy(m_mesh);
+            CoreUtils.Destroy(WaterCausticMaterial);
         }
 
         private static Mesh GenerateCausticsMesh(float size, bool flat = true)

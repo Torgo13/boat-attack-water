@@ -1,11 +1,9 @@
-using System;
 using UnityEditor;
 using UnityEngine;
 
 namespace WaterSystem
 {
-    public
-    class PropertyDrawers
+    public class PropertyDrawers
     {
         [CustomPropertyDrawer(typeof(Data.BasicWaves))]
         public class BasicWavesEditor : PropertyDrawer

@@ -53,7 +53,7 @@ namespace WaterSystem
 
         public DebugShading shadingDebug;
 
-#if ZERO
+#if RENDERPASS
         // Render Passes
         public bool infiniteWater;
         private InfiniteWaterPass _infiniteWaterPass;
@@ -62,7 +62,7 @@ namespace WaterSystem
 
         // Runtime Materials
         private Material _causticMaterial;
-#endif // ZERO
+#endif // RENDERPASS
 
         // Runtime Resources
         private Texture2D _rampTexture;
@@ -74,6 +74,7 @@ namespace WaterSystem
         private static readonly int MaxWaveHeight = Shader.PropertyToID("_MaxWaveHeight");
         private static readonly int MaxDepth = Shader.PropertyToID("_MaxDepth");
         private static readonly int WaveCount = Shader.PropertyToID("_WaveCount");
+        private static readonly int CubemapTexture = Shader.PropertyToID("_CubemapTexture");
         private static readonly int WaveDataBuffer = Shader.PropertyToID("_WaveDataBuffer");
         private static readonly int WaveData = Shader.PropertyToID("waveData");
         private static readonly int WaterFXShaderTag = Shader.PropertyToID("_WaterFXMap");
@@ -87,6 +88,20 @@ namespace WaterSystem
         private static readonly int RampTexture = Shader.PropertyToID("_BoatAttack_RampTexture");
         private static readonly int CausticMap = Shader.PropertyToID("_CausticMap");
         private static readonly int SsrSettings = Shader.PropertyToID("_SSR_Settings");
+
+        private int _reflectionTypes;
+        public int ReflectionTypes
+        {
+            get
+            {
+                if (_reflectionTypes == 0)
+                {
+                    _reflectionTypes = Enum.GetValues(typeof(Data.ReflectionType)).Length;
+                }
+
+                return _reflectionTypes;
+            }
+        }
 
         private void Awake()
         {
@@ -102,17 +117,16 @@ namespace WaterSystem
 
                 SafeDestroy(this);
             }
-        }
 
-        private void OnEnable()
-        {
             LoadResources();
 
             _useComputeBuffer = !computeOverride && SystemInfo.supportsComputeShaders
                 && Application.platform != RuntimePlatform.WebGLPlayer;
+        }
 
+        private void OnEnable()
+        {
             RenderPipelineManager.beginCameraRendering += BeginCameraRendering;
-
             Init();
         }
 
@@ -137,12 +151,12 @@ namespace WaterSystem
 
             waveBuffer?.Dispose();
 
-#if ZERO
+#if RENDERPASS
             // pass cleanup
             _waterBufferPass?.Cleanup();
             _infiniteWaterPass?.Cleanup();
             _causticsPass?.Cleanup();
-#endif // ZERO
+#endif // RENDERPASS
 
             PlanarReflections.Cleanup();
         }
@@ -155,10 +169,10 @@ namespace WaterSystem
             if (settingsData.refType == Data.ReflectionType.PlanarReflection)
                 PlanarReflections.Execute(src, cam);
 
-#if ZERO
+#if RENDERPASS
             if (_causticMaterial == null)
             {
-                _causticMaterial = resources.causticMaterial;
+                _causticMaterial = CoreUtils.CreateEngineMaterial(resources.causticShader);
                 _causticMaterial.SetTexture(CausticMap, resources.defaultSurfaceMap);
             }
 
@@ -175,7 +189,7 @@ namespace WaterSystem
 
             urpData.scriptableRenderer.EnqueuePass(_waterBufferPass);
             urpData.scriptableRenderer.EnqueuePass(_causticsPass);
-#endif // ZERO
+#endif // RENDERPASS
 
             // Water matrix
             const float quantizeValue = 6.25f;
@@ -190,7 +204,7 @@ namespace WaterSystem
             var blendDist = (settingsData.distanceBlend + 10) / 100f;
 
             var matrix = Matrix4x4.TRS(newPos, Quaternion.identity, Vector3.one * blendDist); // transform.localToWorldMatrix;
-            var layer = gameObject.layer;
+            int layer = gameObject.layer;
 
             foreach (var mesh in resources.defaultWaterMeshes)
             {
@@ -207,8 +221,7 @@ namespace WaterSystem
                     LightProbeUsage.Off);
             }
         }
-
-        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        
         private static void SafeDestroy(Object o)
         {
             if (Application.isPlaying)
@@ -249,9 +262,7 @@ namespace WaterSystem
         private void LateUpdate()
         {
             if (GerstnerWavesJobs.Initialized)
-            {
                 GerstnerWavesJobs.UpdateHeights();
-            }
         }
 
         [System.Diagnostics.Conditional("DEBUG")]
@@ -278,23 +289,10 @@ namespace WaterSystem
                 mat.DisableKeyword("GERSTNER_WAVES");
         }
 
-        private int _reflectionTypes;
-        public int ReflectionTypes
-        {
-            get
-            {
-                if (_reflectionTypes == 0)
-                {
-                    _reflectionTypes = Enum.GetValues(typeof(Data.ReflectionType)).Length;
-                }
-
-                return _reflectionTypes;
-            }
-        }
-
         private void SetWaves()
         {
             SetupWaves();
+            NativeArray<float3> waves = GerstnerWavesJobs._waveData;
 
             // set default resources
             Shader.SetGlobalTexture(FoamMap, resources.defaultFoamMap);
@@ -303,12 +301,12 @@ namespace WaterSystem
             Shader.SetGlobalTexture(DitherTexture, resources.ditherNoise);
 
             _maxWaveHeight = 0f;
-            foreach (var w in GerstnerWavesJobs._waveData)
+            foreach (var w in waves)
             {
                 _maxWaveHeight += w.x;
             }
 
-            _maxWaveHeight = Mathf.Max(_maxWaveHeight / GerstnerWavesJobs._waveData.Length, 0.5f);
+            _maxWaveHeight = Mathf.Max(_maxWaveHeight / waves.Length, 0.5f);
             _waveHeight = transform.position.y;
 
             Shader.SetGlobalColor(AbsorptionColor, settingsData._absorptionColor.gamma);
@@ -355,11 +353,10 @@ namespace WaterSystem
                 }
             }
 
-            int waveCount = GerstnerWavesJobs._waveData.Length;
-            Shader.SetGlobalInt(WaveCount, waveCount);
+            Shader.SetGlobalInt(WaveCount, waves.Length);
 
             // Check if the wave data can fit in a Graphics Buffer
-            _useComputeBuffer &= waveCount * 12 <= SystemInfo.maxGraphicsBufferSize;
+            _useComputeBuffer &= waves.Length * 12 <= SystemInfo.maxGraphicsBufferSize;
 
             //GPU side
             if (_useComputeBuffer)
@@ -367,27 +364,19 @@ namespace WaterSystem
                 Shader.EnableKeyword("USE_STRUCTURED_BUFFER");
                 waveBuffer?.Dispose();
 #if ZERO
-                waveBuffer = new ComputeBuffer(waveCount, Unity.Collections.LowLevel.Unsafe.UnsafeUtility.SizeOf<Data.Wave>());
+                waveBuffer = new ComputeBuffer(waves.Length, Unity.Collections.LowLevel.Unsafe.UnsafeUtility.SizeOf<Data.Wave>());
 #else
-                waveBuffer = new ComputeBuffer(waveCount, 12); // Data.Wave has 3 floats
+                waveBuffer = new ComputeBuffer(waves.Length, 12); // Data.Wave has 3 floats
 #endif // ZERO
-                waveBuffer.SetData(GerstnerWavesJobs._waveData);
+                waveBuffer.SetData(waves);
                 Shader.SetGlobalBuffer(WaveDataBuffer, waveBuffer);
             }
             else
             {
                 Shader.DisableKeyword("USE_STRUCTURED_BUFFER");
+
                 UnityEngine.Pool.ListPool<Vector4>.Get(out var waveData);
-                if (waveData.Capacity < waveCount)
-                    waveData.Capacity = waveCount;
-
-                for (int i = 0; i < waveCount; i++)
-                {
-                    Vector3 wave = GerstnerWavesJobs._waveData[i];
-                    waveData.Add(wave);
-                }
-
-                Shader.SetGlobalVectorArray(WaveData, waveData);
+                Shader.SetGlobalVectorArray(WaveData, GetWaveData(waveData, waves));
                 UnityEngine.Pool.ListPool<Vector4>.Release(waveData);
             }
         }
@@ -403,13 +392,14 @@ namespace WaterSystem
 
                 var pixelHeight = Mathf.CeilToInt(rampCount / 4.0f);
 
-                _rampTexture = new Texture2D(rampRes, pixelHeight, TextureFormat.RGBA32, 0, false, true)
+                _rampTexture = new Texture2D(rampRes, pixelHeight, TextureFormat.RGBA32,
+                    mipCount: 0, linear: false, createUninitialized: true)
                 {
                     wrapMode = TextureWrapMode.Clamp,
                     hideFlags = HideFlags.HideAndDontSave
                 };
 
-                var cols = _rampTexture.GetPixelData<Color>(mipLevel: 0);
+                var cols = _rampTexture.GetPixelData<Color32>(mipLevel: 0);
                 for (var i = 0; i < rampRes; i++)
                 {
                     float temp = i / (float)rampRes;
@@ -423,6 +413,20 @@ namespace WaterSystem
             }
 
             Shader.SetGlobalTexture(RampTexture, _rampTexture);
+        }
+
+        private System.Collections.Generic.List<Vector4> GetWaveData(
+            System.Collections.Generic.List<Vector4> waveData, NativeArray<float3> waves)
+        {
+            if (waveData.Capacity < waves.Length)
+                waveData.Capacity = waves.Length;
+
+            for (int i = 0; i < waves.Length; i++)
+            {
+                waveData.Add((Vector3)waves[i]);
+            }
+
+            return waveData;
         }
 
         private void SetupWaves()
@@ -449,7 +453,7 @@ namespace WaterSystem
             setupWavesJob.RunByRef(numWave);
         }
 
-        [BurstCompile(FloatPrecision.Low, FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
+        [BurstCompile(FloatPrecision.Low, FloatMode.Fast)]
         public struct SetupWavesJob : IJobFor
         {
             [ReadOnly] public float r;
@@ -461,7 +465,8 @@ namespace WaterSystem
             
             public void Execute(int i)
             {
-                var random = new Unity.Mathematics.Random((uint)(randomSeed + i + 1));
+                uint seed = math.max(1, unchecked((uint)(randomSeed + i)));
+                var random = new Unity.Mathematics.Random(seed);
                 var p = math.lerp(0.1f, 1.9f, i * r);
                 var amp = a * p * random.NextFloat(0.66f, 1.24f);
                 var dir = d + random.NextFloat(-90f, 90f);

@@ -37,13 +37,12 @@ namespace WaterSystem.Physics
         private int _guid; // GUID for the height system
         private float3 _localArchimedesForce;
 
-        readonly
-        private NativeList<Vector3> _voxels = new NativeList<Vector3>(Allocator.Persistent); // voxel position
+        readonly private NativeList<Vector3> _voxels = new NativeList<Vector3>(Allocator.Persistent); // voxel position
         private NativeArray<float3> _samplePoints; // sample points for height calc
         [NonSerialized] public Data.WaveOutputData[] WaveResults;
-        private float3[] _velocity; // voxel velocity for buoyancy
+        private NativeArray<float3> _velocity; // voxel velocity for buoyancy
 
-        [SerializeField] Collider[] colliders; // colliders attached to this object
+        List<Collider> colliders; // colliders attached to this object
         private Rigidbody _rb;
         private DebugDrawing[] _debugInfo; // For drawing force gizmos
         [NonSerialized] public float PercentSubmerged;
@@ -109,13 +108,15 @@ namespace WaterSystem.Physics
 
         private void SetupColliders()
         {
+            if (colliders == null)
+                colliders = UnityEngine.Pool.ListPool<Collider>.Get();
+
             // The object must have a Collider
-            colliders = GetComponentsInChildren<Collider>();
-            if (colliders.Length != 0)
+            GetComponentsInChildren(colliders);
+            if (colliders.Count != 0)
                 return;
 
-            colliders = new Collider[1];
-            colliders[0] = gameObject.AddComponent<BoxCollider>();
+            colliders.Add(gameObject.AddComponent<BoxCollider>());
 #if DEBUG
             Debug.LogError($"Buoyancy:Object \"{name}\" had no coll. BoxCollider has been added.");
 #endif // DEBUG
@@ -213,6 +214,16 @@ namespace WaterSystem.Physics
             if (_buoyancyType == BuoyancyType.Physical || _buoyancyType == BuoyancyType.PhysicalVoxel)
             {
                 LocalToWorldJob.Cleanup(_guid);
+            }
+
+            if (_velocity.IsCreated)
+            {
+                _velocity.Dispose();
+            }
+
+            if (colliders != null)
+            {
+                UnityEngine.Pool.ListPool<Collider>.Release(colliders);
             }
         }
 
@@ -341,12 +352,15 @@ namespace WaterSystem.Physics
             _baseDrag = _rb.drag;
             _baseAngularDrag = _rb.angularDrag;
 
-            _velocity = new float3[_voxels.Length];
+            _velocity = new NativeArray<float3>(_voxels.Length,
+                Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
             var archimedesForceMagnitude = WaterDensity * Mathf.Abs(UnityPhysics.gravity.y) * volume;
             _localArchimedesForce = new float3(0, archimedesForceMagnitude, 0) / _voxels.Length;
             LocalToWorldJob.SetupJob(_guid, _voxels, ref _samplePoints);
         }
 
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void OnDrawGizmosSelected()
         {
             const float gizmoSize = 0.05f;
@@ -401,7 +415,7 @@ namespace WaterSystem.Physics
                     water.y = debug.WaterHeight;
                     Gizmos.DrawLine(debug.Position, water); // draw the water line
                     Gizmos.DrawSphere(water, gizmoSize * (inWater ? 2f : 1f));
-                    if (_buoyancyType is BuoyancyType.Physical or BuoyancyType.PhysicalVoxel)
+                    if (_buoyancyType == BuoyancyType.Physical || _buoyancyType == BuoyancyType.PhysicalVoxel)
                     {
                         Gizmos.color = Color.red;
                         Gizmos.DrawRay(debug.Position, debug.Force / _rb.mass); // draw force

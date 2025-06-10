@@ -97,9 +97,9 @@ struct WaterInputData
     float2 reflectionUV;
     float2 refractionUV;
     float4 detailUV;
-    /*
+#ifdef MAIN_LIGHT_CALCULATE_SHADOWS
     float4 shadowCoord;
-    */
+#endif // MAIN_LIGHT_CALCULATE_SHADOWS
     half4 waterBufferA;
     half4 waterBufferB;
     half fogCoord;
@@ -113,9 +113,9 @@ struct WaterLighting
     half3 directLighting;
     half3 ambientLighting;
     half3 sss;
-    /*
+#ifdef MAIN_LIGHT_CALCULATE_SHADOWS
     half3 shadow;
-    */
+#endif // MAIN_LIGHT_CALCULATE_SHADOWS
 };
 
 #endif // WATER_INPUT_INCLUDED

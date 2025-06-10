@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace WaterSystem.Rendering
@@ -11,7 +12,8 @@ namespace WaterSystem.Rendering
         [SerializeField] Mesh infiniteWaterMesh;
         [SerializeField] Shader infiniteWaterShader;
 
-        [SerializeField] Material causticMaterial;
+        [SerializeField] Shader causticShader;
+        [SerializeField] Texture2D defaultSurfaceMap;
 
         InfiniteWaterPass infiniteWaterPass;
         WaterFxPass waterFxPass;
@@ -44,6 +46,9 @@ namespace WaterSystem.Rendering
 
         public override void Create()
         {
+            Material causticMaterial = CoreUtils.CreateEngineMaterial(causticShader);
+            causticMaterial.mainTexture = defaultSurfaceMap;
+
             if (infiniteWater)
                 infiniteWaterPass = new InfiniteWaterPass(infiniteWaterMesh, infiniteWaterShader);
 

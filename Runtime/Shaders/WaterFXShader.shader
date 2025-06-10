@@ -95,8 +95,8 @@ Shader "Boat Attack/Water/Buffer/Base"
 			}
 			ENDHLSL
 		}
-
-		/*
+		
+/*
 		Pass
         {
             Name "ShadowCaster"
@@ -125,6 +125,6 @@ Shader "Boat Attack/Water/Buffer/Base"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/ShadowCasterPass.hlsl"
             ENDHLSL
         }
-		*/
+*/
 	}
 }

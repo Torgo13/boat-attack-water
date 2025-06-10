@@ -151,9 +151,11 @@ float4 DetailUVs(float3 positionWS, half noise)
     float2 scale = float2(0.16, 0.08);
     noise *= 0.05;
 
-    //float2 s, c;
-    //sincos(dist.x, s, c);
-    //float2x2 rotA = float2x2(c.x, -s.x, s.x, c.x);
+    /*
+    float2 s, c;
+    sincos(dist.x, s, c);
+    float2x2 rotA = float2x2(c.x, -s.x, s.x, c.x);
+    */
 
     float4 output = positionWS.xzxz * scale.xxyy;
     output.xy += WATER_TIME * 0.2h + noise; // small detail
@@ -174,6 +176,17 @@ void DetailNormals(inout float3 normalWS, float4 uvs, half4 waterFX, float depth
     float3 normal2 = float3(1 - waterFX.y, 0.5h, 1 - waterFX.z) - 0.5;
     normalWS = normalize(normalWS + normal1 + normal2);
 }
+
+#if BLEND_LODS
+void BlendLods(inout float3 positionWS, float3 positionOS, float2 uv)
+{
+	float blend = Remap(LodBlend(positionWS), float4(0.2, 0.8, 0, 1));
+	float2 minMax = float2(1, saturate(blend) + 1);
+	// Mesh LOD
+	positionOS *= Remap(float3(uv.x, 0, uv.y), float4(0, 1, minMax));
+	positionWS = TransformObjectToWorld(positionOS);
+}
+#endif // BLEND_LODS
 
 Varyings WaveVertexOperations(Varyings input)
 {
@@ -197,15 +210,20 @@ Varyings WaveVertexOperations(Varyings input)
     WaveStruct wave;
     SampleWaves(input.positionWS, opacity, wave);
     input.normalWS = wave.normal;
+#if _VOXEL
+#else
     input.positionWS += wave.position;
+#endif // _VOXEL
 
 #ifdef SHADER_API_PS4
     input.positionWS.y -= 0.5;
 #endif
 
     // Dynamic displacement
-    //half4 waterFX = WaterBufferAVert(screenUV.xy);
-    //input.positionWS.y += waterFX.w * 2 - 1;
+#if _VOXEL
+    half4 waterFX = WaterBufferAVert(screenUV.xy);
+    input.positionWS.y += waterFX.w * 2 - 1;
+#endif // _VOXEL
 
     // After waves
     input.positionCS = TransformWorldToHClip(input.positionWS);
@@ -246,7 +264,7 @@ void InitializeInputData(Varyings input, out WaterInputData inputData, float2 sc
     DetailNormals(inputData.normalWS, input.uv, inputData.waterBufferA, depth.x, fade);
 
     inputData.viewDirectionWS = input.viewDirectionWS.xyz;
-
+    
     half2 distortion = DistortionUVs(depth.x, inputData.normalWS, input.viewDirectionWS.xyz);
     distortion = screenUV.xy + distortion;//* clamp(depth.x, 0, 5);
     float d = depth.x;
@@ -257,7 +275,9 @@ void InitializeInputData(Varyings input, out WaterInputData inputData, float2 sc
 
     inputData.detailUV = input.uv;
 
-    //inputData.shadowCoord = TransformWorldToShadowCoord(inputData.normalWS);
+#ifdef MAIN_LIGHT_CALCULATE_SHADOWS
+    inputData.shadowCoord = TransformWorldToShadowCoord(inputData.normalWS);
+#endif // MAIN_LIGHT_CALCULATE_SHADOWS
 
     inputData.fogCoord = input.fogFactorNoise.x;
     inputData.depth = depth.x;
@@ -304,7 +324,9 @@ half3 WaterShading(WaterInputData input, WaterSurfaceData surfaceData, float4 ad
 
     // Lighting
     Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS), input.positionWS, 1);
-    //half volumeShadow = SoftShadows(screenUV, input.positionWS, input.viewDirectionWS, input.depth);
+#ifdef MAIN_LIGHT_CALCULATE_SHADOWS
+    half volumeShadow = SoftShadows(screenUV, input.positionWS, input.viewDirectionWS, input.depth);
+#endif // MAIN_LIGHT_CALCULATE_SHADOWS
     half3 GI = SampleSH(input.normalWS);
 
     // SSS
@@ -348,8 +370,10 @@ half3 WaterShading(WaterInputData input, WaterSurfaceData surfaceData, float4 ad
     // final
     half3 output = MixFog(compB, input.fogCoord);
 
-    //half2 a = frac(input.detailUV.xy);// * input.detailUV.z;
-    //half2 b = frac(input.detailUV.zw);// * 1-input.detailUV.z;
+    /*
+    half2 a = frac(input.detailUV.xy);// * input.detailUV.z;
+    half2 b = frac(input.detailUV.zw);// * 1-input.detailUV.z;
+    */
 
     // Debug block
 #if defined(BOAT_ATTACK_WATER_DEBUG_DISPLAY)
@@ -413,6 +437,10 @@ Varyings WaterVertex(Attributes v)
 
     o.uv.xy = v.texcoord; // geo uvs
     o.positionWS = TransformObjectToWorld(v.positionOS.xyz);
+
+#if BLEND_LODS
+	BlendLods(o.positionWS, v.positionOS.xyz, v.texcoord);
+#endif // BLEND_LODS
 
     o = WaveVertexOperations(o);
     return o;

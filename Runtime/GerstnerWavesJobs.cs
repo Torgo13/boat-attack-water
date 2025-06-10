@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Unity.Jobs;
 using Unity.Burst;
@@ -16,7 +17,9 @@ namespace WaterSystem
         public static bool Initialized;
         private static bool _firstFrame = true;
         private static bool _processing;
-        private static int threadCount;
+#if ZERO
+        private static int _waveCount;
+#endif // ZERO
         public static NativeArray<float3> _waveData; // Wave data from the water system
 
         //Details for Buoyant Objects
@@ -32,9 +35,17 @@ namespace WaterSystem
         private static NativeArray<Data.WaveOutputData> _gerstnerWavesA, _gerstnerWavesB;
 
         // Depth data
-        private static NativeArray<float> _opacity, /*_waterDepth,*/ _depthProfile;
+        private static NativeArray<float> _opacity;
+#if ZERO
+        private static NativeArray<float> _waterDepth;
+#endif // ZERO
+        private static NativeArray<float> _depthProfile;
 
         // Job handles
+#if ZERO
+        private static JobHandle _waterDepthHandle;
+        private static JobHandle _opacityHandle;
+#endif // ZERO
         private static JobHandle _waterHeightHandle;
 
         /// <summary>
@@ -61,13 +72,12 @@ namespace WaterSystem
 
             const int depthProfileCount = 32;
             _depthProfile = new NativeArray<float>(depthProfileCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            var waveDepthProfile = ocean.settingsData._waveDepthProfile;
 
             for (int i = 0; i < depthProfileCount; i++)
             {
-                _depthProfile[i] = ocean.settingsData._waveDepthProfile.Evaluate(i / (float)depthProfileCount);
+                _depthProfile[i] = waveDepthProfile.Evaluate(i / (float)depthProfileCount);
             }
-
-            threadCount = SystemInfo.processorCount / 2;
 
             Initialized = true;
         }
@@ -141,6 +151,7 @@ namespace WaterSystem
                 {
                     entry -= size;
                 }
+
                 Registry[offsetEntry] = entry;
             }
 
@@ -174,6 +185,29 @@ namespace WaterSystem
             var t = Application.isPlaying ? Time.time : Time.realtimeSinceStartup;
 #endif
 
+#if ZER0
+            // Test Water Depth
+            var waterDepth = new DepthGenerator.WaterDepth()
+            {
+                Position = _positions,
+                DepthData = DepthGenerator._depthData,
+                DepthValues = DepthGenerator._globalDepthValues,
+                Depth = _waterDepth,
+            };
+            
+            _waterDepthHandle = waterDepth.Schedule(_positionCount, 64);
+            
+            // Generate Opacity Values
+            var opacity = new OpacityJob()
+            {
+                DepthProfile = _depthProfile,
+                DepthValues = _waterDepth,
+                Opacity = _opacity,
+            };
+
+            _opacityHandle = opacity.Schedule(_positionCount, _waterDepthHandle);
+#endif // ZER0
+
             // Gerstner Wave Height
             var offset = Ocean.Instance.transform.position.y;
             var waterHeight = new HeightJob
@@ -187,7 +221,7 @@ namespace WaterSystem
                 Opacity = _depthProfile,
             };
 
-            _waterHeightHandle = waterHeight.Schedule(_positionCount, threadCount);
+            _waterHeightHandle = waterHeight.Schedule(_positionCount, 32, default);
 
             JobHandle.ScheduleBatchedJobs();
 
@@ -208,7 +242,7 @@ namespace WaterSystem
         }
 
         // Gerstner Height C# Job
-        [BurstCompile(FloatPrecision.Low, FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
+        [BurstCompile(FloatPrecision.Low, FloatMode.Fast)]
         internal struct HeightJob : IJobParallelFor
         {
             [NativeDisableParallelForRestriction]
@@ -224,20 +258,21 @@ namespace WaterSystem
             [ReadOnly] public NativeArray<float> Opacity;
 
             // The code actually running on the job
-            public void Execute(int index)
+            public void Execute(int i)
             {
-                if (index < OffsetLength.x || index >= OffsetLength.y - OffsetLength.x)
+#if ZERO
+                if (i < OffsetLength.x || i >= OffsetLength.y - OffsetLength.x)
                     return;
+#endif // ZERO
 
-                int waveDataLength = WaveData.Length;
-                var waveCountMulti = 1f / waveDataLength;
+                var waveCountMulti = 1f / WaveData.Length;
                 var wavePos = new float3(0f, 0f, 0f);
                 var waveNorm = new float3(0f, 0f, 0f);
 
-                for (var wave = 0; wave < waveDataLength; wave++) // for each wave
+                for (var wave = 0; wave < WaveData.Length; wave++) // for each wave
                 {
                     // Wave data vars
-                    var pos = Position[index].xz;
+                    var pos = Position[i].xz;
 
                     var amplitude = WaveData[wave].x;
                     var direction = math.radians(WaveData[wave].y); // convert the incoming degrees to radians
@@ -245,7 +280,7 @@ namespace WaterSystem
                     ////////////////////////////////wave value calculations//////////////////////////
                     var wSpeed = math.sqrt(9.806f * wavelength); // frequency of the wave based off wavelength
                     float wa = wavelength * amplitude;
-                    var qi = 2f / (wa * waveDataLength);
+                    var qi = 2f / (wa * WaveData.Length);
 
                     math.sincos(direction, out var directionSin, out var directionCos);
                     var windDir = new float2(directionCos, directionSin); // calculate wind direction
@@ -260,22 +295,46 @@ namespace WaterSystem
                     wavePos.y += sinCalc * amplitude * waveCountMulti; // the height is divided by the number of waves
 
                     ////////////////////////////normal output calculations/////////////////////////
-                    var norm = new float3(-(cosCalc * wa * windDir), 1 - qi * wa * sinCalc); // normal vector
+                    // normal vector
+                    var norm = new float3(-(cosCalc * wa * windDir),
+                        1 - qi * wa * sinCalc);
                     waveNorm += amplitude * waveCountMulti * norm;
                 }
 
                 Data.WaveOutputData output = new Data.WaveOutputData();
 
-                wavePos *= math.saturate(Opacity[index]);
-                wavePos.xz += Position[index].xz;
+                wavePos *= math.saturate(Opacity[i]);
+                wavePos.xz += Position[i].xz;
                 wavePos.y += WaveLevelOffset;
                 output.Position = wavePos;
 
-                waveNorm.xy *= Opacity[index];
+                waveNorm.xy *= Opacity[i];
                 output.Normal = math.normalize(waveNorm.xzy);
 
-                Output[index] = output;
+                Output[i] = output;
             }
         }
+
+#if ZERO
+        [BurstCompile]
+        private struct OpacityJob : IJobFor
+        {
+            [ReadOnly] public NativeArray<float> DepthValues;
+            [ReadOnly] public NativeArray<float> DepthProfile;
+
+            [WriteOnly] public NativeArray<float> Opacity;
+            
+            public void Execute(int index)
+            {
+                var profileIndex = 1.0f - math.saturate(-DepthValues[index] / 20.0f);
+                
+                profileIndex *= DepthProfile.Length;
+                
+                profileIndex = math.clamp(profileIndex, 0.0f, DepthProfile.Length - 1f);
+                
+                Opacity[index] = math.saturate(DepthProfile[(int)math.round(profileIndex)]);
+            }
+        }
+#endif // ZERO
     }
 }

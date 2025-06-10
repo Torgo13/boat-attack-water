@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using PlanarSettings = WaterSystem.Rendering.PlanarReflections.PlanarReflectionSettings;
 
@@ -8,7 +7,7 @@ namespace WaterSystem.Rendering
     [CustomPropertyDrawer(typeof(PlanarReflections.PlanarReflectionSettings))]
     public class PlanarSettingsDrawer : PropertyDrawer
     {
-        private bool rendererModeExpand;
+        private bool rendererModeExpand = false;
 
         // Props
         private SerializedProperty resolutionMode;
@@ -57,13 +56,11 @@ namespace WaterSystem.Rendering
             EditorGUI.PropertyField(EditorGUILayout.GetControlRect(true), layerMask);
             EditorGUI.PropertyField(EditorGUILayout.GetControlRect(true), shadows);
             EditorGUI.PropertyField(EditorGUILayout.GetControlRect(true), obliqueProjection);
-            if (!obliqueProjection.boolValue)
-            {
+            if (obliqueProjection.boolValue == false)
                 EditorGUILayout.HelpBox(
                     "Disabling Oblique Projection will lead to objects reflecting below the water," +
                     " only use this if you are having issue with certain effects in the reflections like Fog.",
                     MessageType.Info);
-            }
 
             EditorGUI.PropertyField(EditorGUILayout.GetControlRect(true), rendererMode);
             if (rendererModeExpand)

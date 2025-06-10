@@ -7,8 +7,7 @@ namespace WaterSystem
     /// <summary>
     /// This scriptable object holds default resources for the water rendering
     /// </summary>
-    [System.Serializable]
-    [CreateAssetMenu(fileName = "WaterResources", menuName = "WaterSystem/Resource", order = 0)]
+    [System.Serializable][CreateAssetMenu(fileName = "WaterResources", menuName = "WaterSystem/Resource", order = 0)]
     public class WaterResources : ScriptableObject
     {
         public Texture2D defaultFoamRamp; // a default foam ramp for the basic foam setting
@@ -19,7 +18,7 @@ namespace WaterSystem
         public Material defaultSeaMaterial;
         public Mesh[] defaultWaterMeshes;
         public Mesh defaultInfiniteWaterMesh;
-        public Material causticMaterial;
+        public Shader causticShader;
         public Shader infiniteWaterShader;
     }
 }

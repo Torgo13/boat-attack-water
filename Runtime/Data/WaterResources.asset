@@ -33,5 +33,5 @@ MonoBehaviour:
   - {fileID: 4300020, guid: 074aa8ca109924e18baf19f3e26665b6, type: 3}
   - {fileID: 4300018, guid: 074aa8ca109924e18baf19f3e26665b6, type: 3}
   defaultInfiniteWaterMesh: {fileID: 4300000, guid: 0694fda6617df4cd6a3d240f5eeb580b, type: 3}
-  causticMaterial: {fileID: 2100000, guid: 7e6ea000873112847bd146ddb78ac67d, type: 2}
+  causticShader: {fileID: 4800000, guid: 90939d2e4b62841d29c136c866715501, type: 3}
   infiniteWaterShader: {fileID: 4800000, guid: 5f51d4f8f480441339ead24ab495af7d, type: 3}

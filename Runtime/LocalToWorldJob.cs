@@ -21,7 +21,7 @@ namespace WaterSystem
             // The code actually running on the job
             public void Execute(int i)
             {
-                float4 pos = default;
+                var pos = default(float4);
                 pos.xyz = PositionsLocal[i];
                 pos.w = 1f;
                 pos = math.mul(Matrix, pos);
@@ -34,7 +34,8 @@ namespace WaterSystem
             var jobData = new TransformLocalToWorld
             {
                 PositionsWorld = output,
-                PositionsLocal = new NativeArray<float3>(positions.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory)
+                PositionsLocal = new NativeArray<float3>(positions.Length, Allocator.Persistent,
+                    NativeArrayOptions.UninitializedMemory)
             };
 
             for (var i = 0; i < positions.Length; i++)
@@ -55,7 +56,9 @@ namespace WaterSystem
                 Matrix = localToWorld
             };
 
-            Data[guid].Handle = Data[guid].Job.ScheduleParallel(Data[guid].PositionsLocal.Length, 32, default);
+            Data[guid].Handle = Data[guid].Job.ScheduleParallel(
+                Data[guid].PositionsLocal.Length, 32, default);
+            
             Data[guid].Processing = true;
             JobHandle.ScheduleBatchedJobs();
         }

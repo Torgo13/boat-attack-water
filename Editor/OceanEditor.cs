@@ -121,9 +121,7 @@ namespace WaterSystem
             if (EditorGUI.EndChangeCheck())
             {
                 if (ocean != null)
-                {
                     ocean.Init();
-                }
             }
             //DoRaw(); //  draws original GUI
         }
@@ -184,13 +182,13 @@ namespace WaterSystem
                 case Data.ReflectionType.ReflectionProbe:
                     EditorGUILayout.HelpBox("Currently there are no settings for this mode.", MessageType.Info);
                     break;
+                case Data.ReflectionType.PlanarReflection:
+                    EditorGUILayout.PropertyField(planarSettings);
+                    break;
                 case Data.ReflectionType.ScreenSpaceReflection:
                     EditorGUILayout.PropertyField(ssrSettings);
                     EditorGUILayout.LabelField("Fallback Cubemap", EditorStyles.boldLabel);
                     EditorGUILayout.PropertyField(cubemap, Styles.cubemap);
-                    break;
-                case Data.ReflectionType.PlanarReflection:
-                    EditorGUILayout.PropertyField(planarSettings);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();

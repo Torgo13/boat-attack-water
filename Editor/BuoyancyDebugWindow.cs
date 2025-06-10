@@ -21,7 +21,8 @@ namespace WaterSystem
             EditorGUILayout.LabelField("URP Water System : Buoyancy Debug", EditorStyles.largeLabel);
 
             EditorGUILayout.HelpBox(
-                $"Total Objects:{GerstnerWavesJobs.Registry.Count} Sample Point Count:{GerstnerWavesJobs._positionCount}",
+                $"Total Objects:{GerstnerWavesJobs.Registry.Count} " +
+                $"Sample Point Count:{GerstnerWavesJobs._positionCount}",
                 MessageType.None);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);

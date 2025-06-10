@@ -62,9 +62,7 @@ namespace WaterSystem
 
             if (depthCopyShader == null)
             {
-#if DEBUG
                 Debug.LogError("Failed to load SceneDepth shader for baking.");
-#endif // DEBUG
                 return;
             }
 
@@ -72,10 +70,10 @@ namespace WaterSystem
             YOffset = offset;
             CreateDepthCamera(out var depthCam, objTransform.position, size, mask);
 
-            /*
+#if ZERO
             if (depthCopyShader == null)
                 return;
-            */
+#endif // ZERO
 
             var buffer = RenderTexture.GetTemporary(tileResolution, tileResolution, 24, RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Linear);
@@ -108,9 +106,7 @@ namespace WaterSystem
         {
             if (obj.hasError)
             {
-#if DEBUG
                 Debug.LogError("Depth save failed.");
-#endif // DEBUG
                 return;
             }
 
@@ -127,9 +123,9 @@ namespace WaterSystem
         static void SaveTile(byte[] data)
         {
             var activeScene = DepthGenerator.Current.gameObject.scene;
-            /*
+#if ZERO
             var sceneName = activeScene.name.Split('.')[0];
-            */
+#endif // ZERO
             var path = activeScene.path.Split('.')[0];
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);

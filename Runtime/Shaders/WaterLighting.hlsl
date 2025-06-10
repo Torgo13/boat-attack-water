@@ -3,7 +3,9 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-//#define SHADOW_ITERATIONS 4
+#ifdef MAIN_LIGHT_CALCULATE_SHADOWS
+#define SHADOW_ITERATIONS 4
+#endif // MAIN_LIGHT_CALCULATE_SHADOWS
 
 #ifdef _SSR_SAMPLES_HIGH
     #define SSR_ITERATIONS 32
@@ -11,6 +13,10 @@
     #define SSR_ITERATIONS 16
 #else
     #define SSR_ITERATIONS 8
+#endif
+
+#ifdef _VOXEL
+    #undef _REFLECTION_PLANARREFLECTION
 #endif
 
 half CalculateFresnelTerm(half3 normalWS, half3 viewDirectionWS, float distance)
@@ -56,7 +62,6 @@ half3 Highlights(half3 positionWS, half roughness, half3 normalWS, half3 viewDir
     return specularTerm * mainLight.color * mainLight.distanceAttenuation;
 }
 
-/*
 //Soft Shadows
 half SoftShadows(float2 screenUV, float3 positionWS, half3 viewDir, half depth)
 {
@@ -89,7 +94,6 @@ half SoftShadows(float2 screenUV, float3 positionWS, half3 viewDir, half depth)
     return 1;
 #endif
 }
-*/
 
 ///////////////////////////////////////////////////////////////////////////////
 //                           Reflection Modes                                //
@@ -124,13 +128,13 @@ void RayMarch(float3 origin, float3 direction, out half2 sampleUV, out half vali
     direction *= SSR_STEP_SIZE;
     
     [loop]
-    for(int i = 0; i < SSR_ITERATIONS; i++)
+    for (int i = 0; i < SSR_ITERATIONS; i++)
     {
         origin += direction;
         direction *= 2;
         sampleUV = ViewSpacePosToUV(origin);
             
-        if(sampleUV.x > 1 || sampleUV.x < 0 || sampleUV.y > 1 || sampleUV.y < 0)
+        if (sampleUV.x > 1 || sampleUV.x < 0 || sampleUV.y > 1 || sampleUV.y < 0)
             break;
 
         float deviceDepth = GetDepth(sampleUV);
@@ -139,9 +143,9 @@ void RayMarch(float3 origin, float3 direction, out half2 sampleUV, out half vali
 
         float3 samplePos = ViewPosFromDepth(sampleUV, deviceDepth);
 
-        if(distance(samplePos.z, origin.z) > length(direction) * SSR_THICKNESS) continue;
+        if (distance(samplePos.z, origin.z) > length(direction) * SSR_THICKNESS) continue;
         
-        if(samplePos.z > origin.z)
+        if (samplePos.z > origin.z)
         {
             valid = 1;
             return;
@@ -152,20 +156,20 @@ void RayMarch(float3 origin, float3 direction, out half2 sampleUV, out half vali
 half3 CubemapReflection(float3 viewDirectionWS, float3 positionWS, float3 normalWS)
 {
     float3 reflectVector = reflect(-viewDirectionWS, normalWS);
-    return GlossyEnvironmentReflection(reflectVector, 0, 1);
+    return GlossyEnvironmentReflection(reflectVector, 0, 1); // TODO Sample cubemap instead
 }
 
 half3 SampleReflections(float3 normalWS, float3 positionWS, float3 viewDirectionWS, half2 screenUV)
 {
     half3 reflection = 0;
+    /*
+    half2 refOffset = 0;
+    */
 
-/*
 #if _REFLECTION_CUBEMAP
     half3 reflectVector = reflect(-viewDirectionWS, normalWS);
     reflection = SAMPLE_TEXTURECUBE_LOD(_CubemapTexture, sampler_CubemapTexture, reflectVector, 0).rgb;
 #elif _REFLECTION_PROBES
-*/
-#if _REFLECTION_PROBES
     reflection = CubemapReflection(viewDirectionWS, positionWS, normalWS);
 #elif _REFLECTION_PLANARREFLECTION
     half2 reflectionUV = screenUV + half2(normalWS.zx) * half2(0.05, 0.2);
@@ -173,8 +177,7 @@ half3 SampleReflections(float3 normalWS, float3 positionWS, float3 viewDirection
 
     half3 backup = CubemapReflection(viewDirectionWS, positionWS, normalWS);
     reflection = lerp(backup, reflectionRGBA.rgb, reflectionRGBA.a);
-//#elif _REFLECTION_SSR
-#else
+#elif _REFLECTION_SSR
     half2 uv;
     half valid = 0;
 

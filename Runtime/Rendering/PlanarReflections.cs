@@ -10,6 +10,7 @@ using UnityEngine.Experimental.Rendering;
 
 namespace WaterSystem.Rendering
 {
+    [Unity.Burst.BurstCompile]
     public class PlanarReflections
     {
         [Serializable]
@@ -124,7 +125,9 @@ namespace WaterSystem.Rendering
 
             CalculateReflectionMatrix(ref reflection, reflectionPlane);
             var newPosition = ReflectPosition(realCamera.transform.position);
-            //_reflectionObjects[realCamera].Camera.transform.forward = Vector3.Scale(realCamera.transform.forward, new Vector3(1, -1, 1));
+            /*
+            _reflectionObjects[realCamera].Camera.transform.forward = Vector3.Scale(realCamera.transform.forward, new Vector3(1, -1, 1));
+            */
             _reflectionObjects[realCamera].Camera.worldToCameraMatrix = realCamera.worldToCameraMatrix * reflection;
 
             // Setup oblique projection matrix so that near plane is our reflection
@@ -142,7 +145,7 @@ namespace WaterSystem.Rendering
 
         // Calculates reflection matrix around the given plane
         [Unity.Burst.BurstCompile(FloatMode = Unity.Burst.FloatMode.Fast)]
-        private static void CalculateReflectionMatrix(ref Matrix4x4 reflectionMat, Vector4 plane)
+        private static void CalculateReflectionMatrix(ref Matrix4x4 reflectionMat, in Vector4 plane)
         {
             reflectionMat.m00 = (1F - 2F * plane[0] * plane[0]);
             reflectionMat.m01 = (-2F * plane[0] * plane[1]);
@@ -190,6 +193,14 @@ namespace WaterSystem.Rendering
             }
         }
 
+#if ZERO
+        // Compare two int2
+        private static bool Int2Compare(int2 a, int2 b)
+        {
+            return a.x == b.x && a.y == b.y;
+        }
+#endif // ZERO
+
         // Given position/normal of the plane, calculates plane in camera space.
         private static Vector4 CameraSpacePlane(Camera cam, Vector3 pos, Vector3 normal, float sideSign)
         {
@@ -229,6 +240,7 @@ namespace WaterSystem.Rendering
             }
 
             objects.Camera.targetTexture = objects.Texture;
+            objects.Camera.forceIntoRenderTexture = true;
         }
 
         private static void UpdateReflectionObjects(Camera camera)
@@ -243,7 +255,7 @@ namespace WaterSystem.Rendering
             bool useHdr10 = RenderingUtils.SupportsRenderTextureFormat(RenderTextureFormat.ARGB2101010);
             RenderTextureFormat hdrFormat = useHdr10 ? RenderTextureFormat.ARGB2101010 : RenderTextureFormat.DefaultHDR;
 
-            return RenderTexture.GetTemporary(res.x, res.y, 0,
+            return RenderTexture.GetTemporary(res.x, res.y, depthBuffer: 0,
                 GraphicsFormatUtility.GetGraphicsFormat(hdrFormat, true));
         }
 
@@ -265,8 +277,10 @@ namespace WaterSystem.Rendering
             if (camera.cameraType != CameraType.Game)
                 return;
 
+#if ZERO
             if (m_settings == null)
                 return;
+#endif // ZERO
 
             UpdateReflectionObjects(camera);
 
@@ -275,12 +289,92 @@ namespace WaterSystem.Rendering
             BeginPlanarReflections?.Invoke(context, _reflectionObjects[camera].Camera); // callback Action for PlanarReflection
 
             //Debug.LogError(UniversalRenderPipeline.SupportsRenderRequest(_reflectionObjects[camera].Camera, typeof(UniversalRenderPipeline.SingleCameraRequest)));
-            //UniversalRenderPipeline.SubmitRenderRequest(_reflectionObjects[camera].Camera, typeof(UniversalRenderPipeline.SingleCameraRequest));
+            /*
+            var request = new RenderPipeline.StandardRequest();
+            if (RenderPipeline.SupportsRenderRequest(_reflectionObjects[camera].Camera, request))
+            {
+                request.destination = _reflectionObjects[camera].Texture;
+                RenderPipeline.SubmitRenderRequest(_reflectionObjects[camera].Camera, request);
+            }
+            */
+
             UniversalRenderPipeline.RenderSingleCamera(context, _reflectionObjects[camera].Camera); // render planar reflections
 
             GL.invertCulling = false;
 
             Shader.SetGlobalTexture(_planarReflectionTextureId, _reflectionObjects[camera].Texture); // Assign texture to water shader
         }
+
+#if RENDERPASS
+#else
+        public class PlanarReflectionsPass : ScriptableRenderPass
+        {
+            public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+            {
+                var camera = renderingData.cameraData.camera;
+
+                // Don't render planar reflections in reflections or previews
+                if (camera.cameraType != CameraType.Game)
+                    return;
+
+#if ZERO
+                if (m_settings == null)
+                    return;
+#endif // ZERO
+
+                UpdateReflectionObjects(camera);
+
+                GL.invertCulling = true;
+
+                BeginPlanarReflections?.Invoke(context, _reflectionObjects[camera].Camera); // callback Action for PlanarReflection
+
+                //Debug.LogError(UniversalRenderPipeline.SupportsRenderRequest(_reflectionObjects[camera].Camera, typeof(UniversalRenderPipeline.SingleCameraRequest)));
+                /*
+                if (RenderPipeline.SupportsRenderRequest(_reflectionObjects[camera].Camera, request))
+                {
+                    request.destination = _reflectionObjects[camera].Texture;
+                    RenderPipeline.SubmitRenderRequest(_reflectionObjects[camera].Camera, request);
+                }
+                */
+                UniversalRenderPipeline.RenderSingleCamera(context, _reflectionObjects[camera].Camera); // render planar reflections
+
+                GL.invertCulling = false;
+
+                Shader.SetGlobalTexture(_planarReflectionTextureId, _reflectionObjects[camera].Texture); // Assign texture to water shader
+            }
+        }
+#endif // RENDERPASS
+
+#if ZERO
+        class PlanarReflectionSettingData
+        {
+            private readonly bool _fog;
+            private readonly int _maxLod;
+            private readonly float _lodBias;
+
+            public PlanarReflectionSettingData()
+            {
+                _fog = RenderSettings.fog;
+                _maxLod = QualitySettings.maximumLODLevel;
+                _lodBias = QualitySettings.lodBias;
+            }
+
+            public void Set(bool fog)
+            {
+                GL.invertCulling = true;
+                RenderSettings.fog = fog; // disable fog for now as it's incorrect with projection
+                QualitySettings.maximumLODLevel = 1;
+                QualitySettings.lodBias = _lodBias * 0.5f;
+            }
+
+            public void Restore()
+            {
+                GL.invertCulling = false;
+                RenderSettings.fog = _fog;
+                QualitySettings.maximumLODLevel = _maxLod;
+                QualitySettings.lodBias = _lodBias;
+            }
+        }
+#endif // ZERO
     }
 }
