@@ -364,7 +364,7 @@ half3 WaterShading(WaterInputData input, WaterSurfaceData surfaceData, float4 ad
     // Refraction
     half3 refraction = Refraction(input.refractionUV, input.depth, edgeFade);
 
-    // Do compositing
+    // Compositing
     half3 compA = lerp(refraction, reflection, fresnelTerm) + spec + sss;
     half3 compB = compA * saturate(1 - surfaceData.foamMask) + surfaceData.foam;
     // final

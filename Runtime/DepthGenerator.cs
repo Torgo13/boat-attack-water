@@ -221,13 +221,9 @@ namespace WaterSystem
                 return;
 
             var pixels = depthTile.GetPixelData<Color>(0);
-            for (var i = 0; i < depthTile.width; i++)
+            for (var index = 0; index < pixels.Length; index++)
             {
-                for (var j = 0; j < depthTile.height; j++)
-                {
-                    int index = i * depthTile.width + j;
-                    _globalDepthValues[index] = (half)pixels[index].r;
-                }
+                _globalDepthValues[index] = (half)pixels[index].r;
             }
         }
 

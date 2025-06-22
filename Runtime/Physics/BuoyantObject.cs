@@ -29,7 +29,7 @@ namespace WaterSystem.Physics
         public Vector3 centerOfMass = Vector3.zero; // Center Of Mass offset
         public float waterLevelOffset = 0f;
 
-        private const float Dampner = 0.005f;
+        private const float Damper = 0.005f;
         private const float WaterDensity = 1000;
 
         private float _baseDrag; // reference to original drag
@@ -184,7 +184,6 @@ namespace WaterSystem.Physics
                     //UpdateDrag(submergedAmount);
                     break;
                 case BuoyancyType.NonPhysical:
-                    break;
                 case BuoyancyType.NonPhysicalVoxel:
                     break;
                 default:
@@ -249,7 +248,7 @@ namespace WaterSystem.Physics
 
             submergedAmount += k / _voxels.Length;
 
-            var localDampingForce = Dampner * _rb.mass * -velocity;
+            var localDampingForce = Damper * _rb.mass * -velocity;
             var force = localDampingForce + math.sqrt(k) * _localArchimedesForce;
             _rb.AddForceAtPosition(force, position);
 
@@ -332,6 +331,7 @@ namespace WaterSystem.Physics
             return new Vector3(Mathf.Ceil(vec.x / rounding) * rounding, Mathf.Ceil(vec.y / rounding) * rounding, Mathf.Ceil(vec.z / rounding) * rounding);
         }
 
+        static
         private bool PointIsInsideCollider(Collider c, Vector3 p)
         {
             var cp = UnityPhysics.ClosestPoint(p, c, Vector3.zero, Quaternion.identity);

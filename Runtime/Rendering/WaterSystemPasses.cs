@@ -221,6 +221,7 @@ namespace WaterSystem.Rendering
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             var cam = renderingData.cameraData.camera;
+
             // Stop the pass rendering in the preview
             if (cam.cameraType != CameraType.Game)
                 return;

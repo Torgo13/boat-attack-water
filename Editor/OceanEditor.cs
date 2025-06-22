@@ -12,14 +12,14 @@ namespace WaterSystem
         {
             // Color settings
             public static GUIContent maxVisibility = new GUIContent("Max Visibility");
-            public static GUIContent absoptionColor = new GUIContent("Absorption");
+            public static GUIContent absorptionColor = new GUIContent("Absorption");
             public static GUIContent scatteringColor = new GUIContent("Scattering");
             // Wave
             public static GUIContent basicWaveCount = new GUIContent("Layers");
             public static GUIContent basicWaveAmp = new GUIContent("Amplitude");
             public static GUIContent basicWaveDir = new GUIContent("Direction");
             public static GUIContent basicWaveWavelength = new GUIContent("Wavelength");
-            public static GUIContent microWaveIntenisty = new GUIContent("Intensity");
+            public static GUIContent microWaveIntensity = new GUIContent("Intensity");
             public static GUIContent waveFoamProfile = new GUIContent("Profile");
             public static GUIContent waveDepthProfile = new GUIContent("Depth Multiplier");
             // Reflection
@@ -129,7 +129,7 @@ namespace WaterSystem
         void DoColorSettings()
         {
             EditorGUILayout.Slider(maxVisibility, 0.01f, 50f, Styles.maxVisibility);
-            absorptionColor.colorValue = EditorGUILayout.ColorField(Styles.absoptionColor,
+            absorptionColor.colorValue = EditorGUILayout.ColorField(Styles.absorptionColor,
                 absorptionColor.colorValue,
                 true,
                 false,
@@ -162,7 +162,7 @@ namespace WaterSystem
             EditorGUI.indentLevel--;
             EditorGUILayout.LabelField("Micro Waves", EditorStyles.boldLabel);
             EditorGUI.indentLevel++;
-            EditorGUILayout.Slider(microWaveIntensity, 0.0f, 2f, Styles.microWaveIntenisty);
+            EditorGUILayout.Slider(microWaveIntensity, 0.0f, 2f, Styles.microWaveIntensity);
             EditorGUI.indentLevel--;
             EditorGUILayout.LabelField("Foam", EditorStyles.boldLabel);
             EditorGUI.indentLevel++;
