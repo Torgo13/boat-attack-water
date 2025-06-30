@@ -12,6 +12,7 @@ namespace WaterSystem.Rendering
         [SerializeField] Mesh infiniteWaterMesh;
         [SerializeField] Shader infiniteWaterShader;
 
+        bool caustics;
         [SerializeField] Shader causticShader;
         [SerializeField] Texture2D defaultSurfaceMap;
 
@@ -32,7 +33,9 @@ namespace WaterSystem.Rendering
                 renderer.EnqueuePass(infiniteWaterPass);
 
             renderer.EnqueuePass(waterFxPass);
-            renderer.EnqueuePass(waterCausticsPass);
+
+            if (caustics)
+                renderer.EnqueuePass(waterCausticsPass);
         }
 
         public override void SetupRenderPasses(ScriptableRenderer renderer,
@@ -41,19 +44,24 @@ namespace WaterSystem.Rendering
             if (renderingData.cameraData.cameraType != CameraType.Game)
                 return;
 
-            waterCausticsPass.ConfigureInput(ScriptableRenderPassInput.Depth);
+            if (caustics)
+                waterCausticsPass.ConfigureInput(ScriptableRenderPassInput.Depth);
         }
 
         public override void Create()
         {
-            Material causticMaterial = CoreUtils.CreateEngineMaterial(causticShader);
-            causticMaterial.mainTexture = defaultSurfaceMap;
-
             if (infiniteWater)
                 infiniteWaterPass = new InfiniteWaterPass(infiniteWaterMesh, infiniteWaterShader);
 
             waterFxPass = new WaterFxPass();
-            waterCausticsPass = new WaterCausticsPass(causticMaterial);
+
+            if (causticShader != null)
+            {
+                caustics = true;
+                Material causticMaterial = CoreUtils.CreateEngineMaterial(causticShader);
+                causticMaterial.mainTexture = defaultSurfaceMap;
+                waterCausticsPass = new WaterCausticsPass(causticMaterial);
+            }
         }
 
         protected override void Dispose(bool disposing)
