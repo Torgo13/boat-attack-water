@@ -211,6 +211,7 @@ Varyings WaveVertexOperations(Varyings input)
     SampleWaves(input.positionWS, opacity, wave);
     input.normalWS = wave.normal;
 #if _VOXEL
+    input.positionWS.y += wave.position.y;
 #else
     input.positionWS += wave.position;
 #endif // _VOXEL
@@ -220,10 +221,10 @@ Varyings WaveVertexOperations(Varyings input)
 #endif
 
     // Dynamic displacement
-#if _VOXEL
+#if _DISPLACEMENT
     half4 waterFX = WaterBufferAVert(screenUV.xy);
     input.positionWS.y += waterFX.w * 2 - 1;
-#endif // _VOXEL
+#endif // _DISPLACEMENT
 
     // After waves
     input.positionCS = TransformWorldToHClip(input.positionWS);
@@ -354,7 +355,10 @@ half3 WaterShading(WaterInputData input, WaterSurfaceData surfaceData, float4 ad
     surfaceData.foam *= (GI + directLighting * mainLight.shadowAttenuation) * 3 * saturate(surfaceData.foamMask);
 
     // SSS
-    half3 sss = directLighting /* * volumeShadow */ + GI;
+#ifdef MAIN_LIGHT_CALCULATE_SHADOWS
+    directLighting *= volumeShadow;
+#endif // MAIN_LIGHT_CALCULATE_SHADOWS
+    half3 sss = directLighting + GI;
     sss *= Scattering(input.depth);
 
     // Reflections
