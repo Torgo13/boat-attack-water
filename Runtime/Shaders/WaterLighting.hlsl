@@ -15,9 +15,11 @@
     #define SSR_ITERATIONS 8
 #endif
 
+/* // TODO: Only disable planar reflections for water voxels, not ocean voxels
 #ifdef _VOXEL
     #undef _REFLECTION_PLANARREFLECTION
 #endif
+*/
 
 half CalculateFresnelTerm(half3 normalWS, half3 viewDirectionWS, float distance)
 {

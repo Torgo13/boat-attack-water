@@ -23,12 +23,12 @@ Shader "Boat Attack/Water/InfiniteWater"
 			//#pragma shader_feature_local _STATIC_SHADER
 			//#pragma multi_compile_fragment _ BOAT_ATTACK_WATER_DEBUG_DISPLAY
 
-			#pragma multi_compile_fragment _ /*_SSR_SAMPLES_LOW*/ _SSR_SAMPLES_MEDIUM _SSR_SAMPLES_HIGH 
+			#pragma multi_compile_fragment _SSR_SAMPLES_LOW _SSR_SAMPLES_MEDIUM _SSR_SAMPLES_HIGH 
 			
             // -------------------------------------
             // Lightweight Pipeline keywords
 			//#pragma multi_compile_fragment _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
-            #pragma multi_compile_fragment _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile_fragment _ _ADDITIONAL_LIGHTS_VERTEX //_ADDITIONAL_LIGHTS
             //#pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile_fragment _ _LIGHT_COOKIES
             //#pragma multi_compile_fragment _ _SHADOWS_SOFT

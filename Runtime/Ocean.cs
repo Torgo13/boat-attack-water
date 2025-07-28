@@ -191,6 +191,7 @@ namespace WaterSystem
             urpData.scriptableRenderer.EnqueuePass(_causticsPass);
 #endif // RENDERPASS
 
+#if WATER_MESH
             // Water matrix
             const float quantizeValue = 6.25f;
             const float forwards = 10f;
@@ -220,6 +221,7 @@ namespace WaterSystem
                     probeAnchor: null,
                     LightProbeUsage.Off);
             }
+#endif // WATER_MESH
         }
         
         private static void SafeDestroy(Object o)
@@ -415,7 +417,7 @@ namespace WaterSystem
             Shader.SetGlobalTexture(RampTexture, _rampTexture);
         }
 
-        private System.Collections.Generic.List<Vector4> GetWaveData(
+        private static System.Collections.Generic.List<Vector4> GetWaveData(
             System.Collections.Generic.List<Vector4> waveData, NativeArray<float3> waves)
         {
             if (waveData.Capacity < waves.Length)

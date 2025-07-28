@@ -46,7 +46,7 @@ namespace WaterSystem.Rendering
             public int m_RendererIndex;
         }
 
-        private class PlanarReflectionObjects
+        private sealed class PlanarReflectionObjects
         {
             public Camera Camera;
             public RenderTexture Texture;
@@ -245,7 +245,7 @@ namespace WaterSystem.Rendering
 
         private static void UpdateReflectionObjects(Camera camera)
         {
-            _reflectionObjects.TryAdd(camera, new PlanarReflectionObjects());
+            _ = _reflectionObjects.TryAdd(camera, new PlanarReflectionObjects());
             UpdateReflectionCamera(camera);
             PlanarReflectionTexture(_reflectionObjects[camera], ReflectionResolution(camera, 1f));
         }
@@ -256,7 +256,7 @@ namespace WaterSystem.Rendering
             RenderTextureFormat hdrFormat = useHdr10 ? RenderTextureFormat.ARGB2101010 : RenderTextureFormat.DefaultHDR;
 
             return RenderTexture.GetTemporary(res.x, res.y, depthBuffer: 0,
-                GraphicsFormatUtility.GetGraphicsFormat(hdrFormat, true));
+                GraphicsFormatUtility.GetGraphicsFormat(hdrFormat, isSRGB: true));
         }
 
         private static int2 ReflectionResolution(Camera cam, float scale)

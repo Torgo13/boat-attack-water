@@ -1,6 +1,7 @@
 #ifndef COMMON_UTILITIES_INCLUDED
 #define COMMON_UTILITIES_INCLUDED
 
+#if BLEND_LODS
 // remaps a value based on a in:min/max and out:min/max
 // value		=		value to be remapped
 // remap		=		x = min in, y = max in, z = min out, w = max out
@@ -8,6 +9,7 @@ float Remap(half value, half4 remap)
 {
 	return remap.z + (value - remap.x) * (remap.w - remap.z) / (remap.y - remap.x);
 }
+#endif // BLEND_LODS
 
 // Converts greyscale height to normal
 // _tex			=		input texture(separate from a sampler)
