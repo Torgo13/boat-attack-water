@@ -1,5 +1,6 @@
 {
     "name": "WaterSystem",
+    "rootNamespace": "",
     "references": [
         "GUID:d8b63aba1907145bea998dd612889d6b",
         "GUID:15fc0a57446b3144c949da3e2b9737a9",
@@ -14,6 +15,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.render-pipelines.universal",
+            "expression": "17.3.0",
+            "define": "WATER_RENDER_REQUEST"
+        }
+    ],
     "noEngineReferences": false
 }

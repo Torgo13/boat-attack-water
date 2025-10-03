@@ -164,12 +164,18 @@ namespace WaterSystem
                 {
                     LocalToWorldJob.CompleteJob(_guid);
                     //Debug.Log("new pass: " + gameObject.name);
+#if UNITY_6000_3_OR_NEWER
+#else
                     Physics.autoSyncTransforms = false;
+#endif // UNITY_6000_3_OR_NEWER
 
                     for (var i = 0; i < _voxels.Length; i++)
                         BuoyancyForce(_samplePoints[i], _velocity[i], Heights[i].y + waterLevelOffset, ref submergedAmount, ref _debugInfo[i]);
                     Physics.SyncTransforms();
+#if UNITY_6000_3_OR_NEWER
+#else
                     Physics.autoSyncTransforms = true;
+#endif // UNITY_6000_3_OR_NEWER
                     UpdateDrag(submergedAmount);
                     break;
                 }

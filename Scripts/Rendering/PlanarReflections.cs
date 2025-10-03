@@ -40,10 +40,13 @@ namespace UnityEngine.Rendering.Universal
 
         public static event Action<ScriptableRenderContext, Camera> BeginPlanarReflections;
 
+#if WATER_RENDER_REQUEST
+#else
         private void OnEnable()
         {
             RenderPipelineManager.beginCameraRendering += ExecutePlanarReflections;
         }
+#endif // WATER_RENDER_REQUEST
 
         // Cleanup all the objects we possibly have created
         private void OnDisable()
@@ -58,9 +61,12 @@ namespace UnityEngine.Rendering.Universal
 
         private void Cleanup()
         {
+#if WATER_RENDER_REQUEST
+#else
             RenderPipelineManager.beginCameraRendering -= ExecutePlanarReflections;
+#endif // WATER_RENDER_REQUEST
 
-            if(_reflectionCamera)
+            if (_reflectionCamera)
             {
                 _reflectionCamera.targetTexture = null;
                 SafeDestroy(_reflectionCamera.gameObject);
@@ -236,8 +242,17 @@ namespace UnityEngine.Rendering.Universal
             return new int2(x, y);
         }
 
+#if WATER_RENDER_REQUEST
+        public void ExecutePlanarReflections(ScriptableRenderContext context, Camera camera)
+#else
         private void ExecutePlanarReflections(ScriptableRenderContext context, Camera camera)
+#endif // WATER_RENDER_REQUEST
         {
+#if WATER_RENDER_REQUEST
+            if (camera == _reflectionCamera)
+                return;
+#endif // WATER_RENDER_REQUEST
+
             // we dont want to render planar reflections in reflections or previews
             if (camera.cameraType == CameraType.Reflection || camera.cameraType == CameraType.Preview)
                 return;
@@ -251,11 +266,27 @@ namespace UnityEngine.Rendering.Universal
             Shader.EnableKeyword("_PLANAR_REFLECTION_CAMERA");
 
             BeginPlanarReflections?.Invoke(context, _reflectionCamera); // callback Action for PlanarReflection
+
+#if WATER_RENDER_REQUEST
+            // Create a standard request
+            var request = new RenderPipeline.StandardRequest();
+
+            // Check if the request is supported by the active render pipeline
+            if (RenderPipeline.SupportsRenderRequest(_reflectionCamera, request))
+            {
+                // Submit the render request to the active render pipeline with different destination textures
+                request.destination = _reflectionCamera.targetTexture;
+
+                // Render camera and fill texture2D with its view
+                RenderPipeline.SubmitRenderRequest(_reflectionCamera, request);
+            }
+#else
             UniversalRenderPipeline.RenderSingleCamera(context, _reflectionCamera); // render planar reflections
+#endif // WATER_RENDER_REQUEST
 
             data.Restore(); // restore the quality settings
             Shader.SetGlobalTexture(_planarReflectionTextureId, _reflectionTexture); // Assign texture to water shader
-            Shader.DisableKeyword("_PLANAR_REFLECTION_CAMERA");
+            Shader.DisableKeyword("_PLANAR_REFLECTION_CAMERA");            
         }
 
         class PlanarReflectionSettingData

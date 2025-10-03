@@ -111,6 +111,13 @@ namespace WaterSystem
         {
             if (cam.cameraType == CameraType.Preview) return;
 
+#if WATER_RENDER_REQUEST
+            if (_planarReflections != null)
+            {
+                _planarReflections.ExecutePlanarReflections(src, cam);
+            }
+#endif // WATER_RENDER_REQUEST
+
             var roll = cam.transform.localEulerAngles.z;
             Shader.SetGlobalFloat(CameraRoll, roll);
             Shader.SetGlobalMatrix(InvViewProjection,
@@ -174,8 +181,11 @@ namespace WaterSystem
             {
                 resources = Resources.Load("WaterResources") as WaterResources;
             }
+
+#if BUGFIX
             if(Application.platform != RuntimePlatform.WebGLPlayer) // TODO - bug with Opengl depth
                 CaptureDepthMap();
+#endif // BUGFIX
         }
 
         private void LateUpdate()
