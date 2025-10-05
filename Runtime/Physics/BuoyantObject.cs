@@ -37,7 +37,7 @@ namespace WaterSystem.Physics
         private int _guid; // GUID for the height system
         private float3 _localArchimedesForce;
 
-        private NativeList<Vector3> _voxels = new NativeList<Vector3>(Allocator.Persistent); // voxel position
+        private NativeList<Vector3> _voxels; // voxel position
         private NativeArray<float3> _samplePoints; // sample points for height calc
         [NonSerialized] public Data.WaveOutputData[] WaveResults;
         private NativeArray<float3> _velocity; // voxel velocity for buoyancy
@@ -50,7 +50,10 @@ namespace WaterSystem.Physics
         [ContextMenu("Initialize")]
         private void Init()
         {
-            _voxels.Clear();
+            if (_voxels.IsCreated)
+                _voxels.Clear();
+            else
+                _voxels = new NativeList<Vector3>(Allocator.Persistent);
 
             switch (_buoyancyType)
             {

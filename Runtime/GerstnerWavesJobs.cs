@@ -20,6 +20,12 @@ namespace WaterSystem
 #if ZERO
         private static int _waveCount;
 #endif // ZERO
+
+        const int sampleCount = 4096;
+        const int depthProfileCount = 32;
+
+        public static NativeArray<float> _data;
+
         public static NativeArray<float3> _waveData; // Wave data from the water system
 
         //Details for Buoyant Objects
@@ -51,7 +57,8 @@ namespace WaterSystem
         /// <summary>
         /// Dictionary containing the objects GUID and positions to sample for buoyancy
         /// </summary>
-        public static readonly Dictionary<int, int2> Registry = new Dictionary<int, int2>();
+        static readonly Dictionary<int, int2> _registry = new Dictionary<int, int2>();
+        public static Dictionary<int, int2> Registry => _registry;
 
         public static void Init()
         {
@@ -60,18 +67,36 @@ namespace WaterSystem
             if (ocean == null)
                 return;
 
+            _data = new NativeArray<float>(
+                  3 * sampleCount   // _samplePositionsA
+                + 3 * sampleCount   // _samplePositionsB
+                + 6 * sampleCount   // _gerstnerWavesA
+                + 6 * sampleCount   // _gerstnerWavesB
+                + sampleCount       // _opacity
+                + depthProfileCount // _depthProfile
+                , Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
+            int start = 0;
+            int length = 3 * sampleCount;
+
             // Max sample count for quality level
-            const int sampleCount = 4096;
-            _samplePositionsA = new NativeArray<float3>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            _samplePositionsB = new NativeArray<float3>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            _samplePositionsA = _data.GetSubArray(start, length).Reinterpret<float3>(sizeof(float));
+            start += length;
+            _samplePositionsB = _data.GetSubArray(start, length).Reinterpret<float3>(sizeof(float));
+            start += length;
 
-            _gerstnerWavesA = new NativeArray<Data.WaveOutputData>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            _gerstnerWavesB = new NativeArray<Data.WaveOutputData>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            length = 6 * sampleCount;
+            _gerstnerWavesA = _data.GetSubArray(start, length).Reinterpret<Data.WaveOutputData>(sizeof(float));
+            start += length;
+            _gerstnerWavesB = _data.GetSubArray(start, length).Reinterpret<Data.WaveOutputData>(sizeof(float));
+            start += length;
 
-            _opacity = new NativeArray<float>(sampleCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            length = sampleCount;
+            _opacity = _data.GetSubArray(start, length);
+            start += length;
 
-            const int depthProfileCount = 32;
-            _depthProfile = new NativeArray<float>(depthProfileCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            length = depthProfileCount;
+            _depthProfile = _data.GetSubArray(start, length);
             var waveDepthProfile = ocean.settingsData._waveDepthProfile;
 
             for (int i = 0; i < depthProfileCount; i++)
@@ -89,26 +114,8 @@ namespace WaterSystem
             DepthGenerator.CleanUp();
 
             // Cleanup native arrays
-            if (_waveData.IsCreated)
-                _waveData.Dispose();
-
-            if (_samplePositionsA.IsCreated)
-                _samplePositionsA.Dispose();
-
-            if (_samplePositionsB.IsCreated)
-                _samplePositionsB.Dispose();
-
-            if (_gerstnerWavesA.IsCreated)
-                _gerstnerWavesA.Dispose();
-
-            if (_gerstnerWavesB.IsCreated)
-                _gerstnerWavesB.Dispose();
-
-            if (_opacity.IsCreated)
-                _opacity.Dispose();
-
-            if (_depthProfile.IsCreated)
-                _depthProfile.Dispose();
+            if (_data.IsCreated)
+                _data.Dispose();
 
             Initialized = false;
         }

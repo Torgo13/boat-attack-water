@@ -271,13 +271,15 @@ namespace WaterSystem.Rendering
         {
             size *= 0.5f;
 
-            var verts = new Unity.Collections.NativeArray<Vector3>(4, Unity.Collections.Allocator.Temp);
+            var verts = new Unity.Collections.NativeArray<Vector3>(4,
+                Unity.Collections.Allocator.Temp, Unity.Collections.NativeArrayOptions.UninitializedMemory);
             verts[0] = new Vector3(-size, flat ? 0f : -size, flat ? -size : 0f);
             verts[1] = new Vector3( size, flat ? 0f : -size, flat ? -size : 0f);
             verts[2] = new Vector3(-size, flat ? 0f :  size, flat ?  size : 0f);
             verts[3] = new Vector3( size, flat ? 0f :  size, flat ?  size : 0f);
 
-            var tris = new Unity.Collections.NativeArray<ushort>(6, Unity.Collections.Allocator.Temp);
+            var tris = new Unity.Collections.NativeArray<ushort>(6,
+                Unity.Collections.Allocator.Temp, Unity.Collections.NativeArrayOptions.UninitializedMemory);
             tris[0] = 0;
             tris[1] = 2;
             tris[2] = 1;
@@ -285,21 +287,18 @@ namespace WaterSystem.Rendering
             tris[4] = 3;
             tris[5] = 1;
 
-            var uvs = new Unity.Collections.NativeArray<Vector2>(4, Unity.Collections.Allocator.Temp);
+            var uvs = new Unity.Collections.NativeArray<Vector2>(4,
+                Unity.Collections.Allocator.Temp, Unity.Collections.NativeArrayOptions.UninitializedMemory);
             uvs[0] = new Vector2(0f, 0f);
             uvs[1] = new Vector2(1f, 0f);
             uvs[2] = new Vector2(0f, 1f);
             uvs[3] = new Vector2(1f, 1f);
 
-            Mesh m = new Mesh
-            {
-                indexFormat = IndexFormat.UInt16,
-            };
+            Mesh m = new Mesh();
 
             m.SetVertices(verts);
             m.SetIndices(tris, MeshTopology.Triangles, submesh: 0);
             m.SetUVs(0, uvs);
-            m.Optimize();
 
             return m;
         }
