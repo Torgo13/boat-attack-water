@@ -14,9 +14,9 @@ using UnityEngine.SceneManagement;
 
 namespace WaterSystem
 {
-    /*
+#if ZERO
     [ExecuteAlways]
-    */
+#endif // ZERO
     [AddComponentMenu("URP Water System/Depth Generator")]
     public class DepthGenerator : MonoBehaviour
     {
@@ -25,9 +25,9 @@ namespace WaterSystem
         public static DepthData _depthData;
         // Global depth values
         public static NativeArray<half> _globalDepthValues;
-        /*
+#if ZERO
         private static int _depthValueCount;
-        */
+#endif // ZERO
 
         // Static vars
         private static readonly int Depth = Shader.PropertyToID("_Depth");
@@ -36,15 +36,15 @@ namespace WaterSystem
         [HideInInspector, SerializeField] private Mesh mesh;
         [HideInInspector, SerializeField] private Material debugMaterial;
         [HideInInspector, SerializeField] private Shader shader;
-        /*
+#if ZERO
         private Camera _depthCam;
-        */
+#endif // ZERO
         private Material _material;
         private Transform _transform;
         private Vector3 _positionWS;
-        /*
+#if ZERO
         [SerializeField] private half[] _values;
-        */
+#endif // ZERO
 
         public int size = 250;
         public int tileRes = 1024;
@@ -73,17 +73,17 @@ namespace WaterSystem
             {
 #if UNITY_EDITOR
                 var activeScene = gameObject.scene;
-                /*
+#if ZERO
                 var sceneName = activeScene.name.Split('.')[0];
-                */
+#endif // ZERO
                 var path = activeScene.path.Split('.')[0];
                 var file = $"{gameObject.name}_DepthTile.png";
                 try
                 {
                     depthTile = AssetDatabase.LoadAssetAtPath<Texture2D>($"{path}/{file}");
-                    /*
+#if ZERO
                     StoreDepthValues();
-                    */
+#endif // ZERO
                 }
                 catch (Exception e)
                 {
@@ -144,7 +144,7 @@ namespace WaterSystem
                 Graphics.DrawMeshNow(mesh, matrix);
             }
 
-            /*
+#if ZERO
             if (_depthValues != null && _depthValues.Length != 0)
             {
                 const float dist = 100f;
@@ -169,10 +169,11 @@ namespace WaterSystem
                     }
                 }
             }
-            */
+#endif // ZERO
 #endif
         }
 
+#if WATER_DEPTH
         [BurstCompile]
         public struct WaterDepth : IJobParallelFor
         {
@@ -214,6 +215,7 @@ namespace WaterSystem
                 return (-(depth * (DepthData.Range + DepthData.Offset)) + DepthData.Offset);
             }
         }
+#endif // WATER_DEPTH
 
         private void StoreDepthValues()
         {

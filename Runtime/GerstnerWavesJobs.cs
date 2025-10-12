@@ -41,10 +41,10 @@ namespace WaterSystem
         private static NativeArray<Data.WaveOutputData> _gerstnerWavesA, _gerstnerWavesB;
 
         // Depth data
+#if WATER_DEPTH
         private static NativeArray<float> _opacity;
-#if ZERO
         private static NativeArray<float> _waterDepth;
-#endif // ZERO
+#endif // WATER_DEPTH
         private static NativeArray<float> _depthProfile;
 
         // Job handles
@@ -72,7 +72,9 @@ namespace WaterSystem
                 + 3 * sampleCount   // _samplePositionsB
                 + 6 * sampleCount   // _gerstnerWavesA
                 + 6 * sampleCount   // _gerstnerWavesB
+#if WATER_DEPTH
                 + sampleCount       // _opacity
+#endif // WATER_DEPTH
                 + depthProfileCount // _depthProfile
                 , Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
@@ -91,9 +93,11 @@ namespace WaterSystem
             _gerstnerWavesB = _data.GetSubArray(start, length).Reinterpret<Data.WaveOutputData>(sizeof(float));
             start += length;
 
+#if WATER_DEPTH
             length = sampleCount;
             _opacity = _data.GetSubArray(start, length);
             start += length;
+#endif // WATER_DEPTH
 
             length = depthProfileCount;
             _depthProfile = _data.GetSubArray(start, length);
@@ -192,7 +196,7 @@ namespace WaterSystem
             var t = Application.isPlaying ? Time.time : Time.realtimeSinceStartup;
 #endif
 
-#if ZER0
+#if WATER_DEPTH
             // Test Water Depth
             var waterDepth = new DepthGenerator.WaterDepth()
             {
@@ -213,7 +217,7 @@ namespace WaterSystem
             };
 
             _opacityHandle = opacity.Schedule(_positionCount, _waterDepthHandle);
-#endif // ZER0
+#endif // WATER_DEPTH
 
             // Gerstner Wave Height
             var offset = Ocean.Instance.transform.position.y;
