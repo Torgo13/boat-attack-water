@@ -467,13 +467,19 @@ namespace WaterSystem
             
             public void Execute(int i)
             {
-                uint seed = math.max(1, unchecked((uint)(randomSeed + i)));
+                uint seed = MaxUnlikely(1, unchecked((uint)(randomSeed + i)));
                 var random = new Unity.Mathematics.Random(seed);
                 var p = math.lerp(0.1f, 1.9f, i * r);
                 var amp = a * p * random.NextFloat(0.66f, 1.24f);
                 var dir = d + random.NextFloat(-90f, 90f);
                 var len = math.PI2 / (l * p * random.NextFloat(0.75f, 1.2f));
                 waveData[i] = new float3(amp, dir, len);
+            }
+
+            [System.Runtime.CompilerServices.MethodImpl(256)]
+            static uint MaxUnlikely(uint x, uint y)
+            {
+                return Unity.Burst.CompilerServices.Hint.Unlikely(x > y) ? x : y;
             }
         }
 

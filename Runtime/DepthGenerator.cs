@@ -186,7 +186,8 @@ namespace WaterSystem
             public void Execute(int index)
             {
                 var UVpos = GetUVPosition(Position[index]);
-                if (UVpos.x is > 1.0f or < 0.0f || UVpos.y is > 1.0f or < 0.0f)
+                if (Unity.Burst.CompilerServices.Hint.Unlikely(
+                    UVpos.x is > 1.0f or < 0.0f || UVpos.y is > 1.0f or < 0.0f))
                 {
                     Depth[index] = -999.0f;
                 }
