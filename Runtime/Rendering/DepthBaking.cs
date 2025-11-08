@@ -14,8 +14,10 @@ namespace WaterSystem
 
     class DepthSave : ScriptableRenderPass
     {
+        readonly
         private Shader _shader;
 
+        readonly
         private RenderTexture depthTarget;
         private readonly Material _mat;
         private readonly ProfilingSampler _profiler = new ProfilingSampler("DepthSave");

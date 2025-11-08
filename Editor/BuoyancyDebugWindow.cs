@@ -30,7 +30,11 @@ namespace WaterSystem
             var count = 0;
             foreach (var registryEntry in GerstnerWavesJobs.Registry)
             {
+#if UNITY_6000_3_OR_NEWER
+                var obj = EditorUtility.EntityIdToObject(registryEntry.Key);
+#else
                 var obj = EditorUtility.InstanceIDToObject(registryEntry.Key);
+#endif // UNITY_6000_3_OR_NEWER
                 var box = EditorGUILayout.BeginHorizontal();
                 if (count % 2 == 0)
                     GUI.Box(box, GUIContent.none);

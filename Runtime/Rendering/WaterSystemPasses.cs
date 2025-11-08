@@ -45,9 +45,16 @@ namespace WaterSystem.Rendering
 
             var graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormatUtility.GetGraphicsFormat(
                     renderTextureFormat, isSRGB: false);
+            
+#if UNITY_6000_3_OR_NEWER
+            const UnityEngine.Experimental.Rendering.GraphicsFormatUsage formatUsage
+                = UnityEngine.Experimental.Rendering.GraphicsFormatUsage.Linear;
+#else
+            const UnityEngine.Experimental.Rendering.FormatUsage formatUsage
+                = UnityEngine.Experimental.Rendering.FormatUsage.Render;
+#endif // UNITY_6000_3_OR_NEWER
 
-            colorFormat = SystemInfo.GetCompatibleFormat(graphicsFormat,
-                UnityEngine.Experimental.Rendering.FormatUsage.Render);
+            colorFormat = SystemInfo.GetCompatibleFormat(graphicsFormat, formatUsage);
         }
 
 #if !ZERO
@@ -72,9 +79,15 @@ namespace WaterSystem.Rendering
                 td = GetRTD(width, height);
 
 #if UNITY_2022_1_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
+            RenderingUtils.ReAllocateHandleIfNeeded(ref m_BufferTargetA, td, FilterMode.Bilinear, name: "_WaterBufferA");
+            RenderingUtils.ReAllocateHandleIfNeeded(ref m_BufferTargetB, td, FilterMode.Bilinear, name: "_WaterBufferB");
+            RenderingUtils.ReAllocateHandleIfNeeded(ref m_BufferTargetDepth, td, FilterMode.Bilinear, name: "_WaterBufferDepth");
+#else
             RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetA, td, FilterMode.Bilinear, name: "_WaterBufferA");
             RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetB, td, FilterMode.Bilinear, name: "_WaterBufferB");
             RenderingUtils.ReAllocateIfNeeded(ref m_BufferTargetDepth, td, FilterMode.Bilinear, name: "_WaterBufferDepth");
+#endif // UNITY_6000_3_OR_NEWER
             multiTargets[0] = m_BufferTargetA;
             multiTargets[1] = m_BufferTargetB;
             cmd.SetGlobalTexture(WaterBufferA, m_BufferTargetA.nameID);
@@ -124,7 +137,7 @@ namespace WaterSystem.Rendering
         }
     }
 
-    #endregion
+#endregion
 
     #region InfiniteWater Pass
 

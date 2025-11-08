@@ -171,14 +171,20 @@ namespace WaterSystem.Physics
                     {
                         LocalToWorldJob.CompleteJob(_guid);
                         //Debug.Log("new pass: " + gameObject.name);
+#if UNITY_6000_3_OR_NEWER
+#else
                         UnityPhysics.autoSyncTransforms = false;
+#endif // UNITY_6000_3_OR_NEWER
 
                         for (var i = 0; i < _voxels.Length; i++)
                             BuoyancyForce(_samplePoints[i], _velocity[i], WaveResults[i].Position.y + waterLevelOffset, ref submergedAmount, ref _debugInfo[i]);
 
                         UnityPhysics.SyncTransforms();
+#if UNITY_6000_3_OR_NEWER
+#else
                         UnityPhysics.autoSyncTransforms = true;
-                        UpdateDrag(submergedAmount);
+#endif // UNITY_6000_3_OR_NEWER
+                    UpdateDrag(submergedAmount);
                         break;
                     }
                 case BuoyancyType.Physical:
@@ -262,8 +268,13 @@ namespace WaterSystem.Physics
         private void UpdateDrag(float submergedAmount)
         {
             PercentSubmerged = math.lerp(PercentSubmerged, submergedAmount, 0.25f);
+#if UNITY_6000_3_OR_NEWER
+            _rb.linearDamping = _baseDrag + _baseDrag * (PercentSubmerged * 10f);
+            _rb.angularDamping = _baseAngularDrag + PercentSubmerged * 0.5f;
+#else
             _rb.drag = _baseDrag + _baseDrag * (PercentSubmerged * 10f);
             _rb.angularDrag = _baseAngularDrag + PercentSubmerged * 0.5f;
+#endif // UNITY_6000_3_OR_NEWER
         }
 
         private void GetVelocityPoints()
@@ -352,8 +363,13 @@ namespace WaterSystem.Physics
             }
 
             _rb.centerOfMass = centerOfMass + _voxelBounds.center;
+#if UNITY_6000_3_OR_NEWER
+            _baseDrag = _rb.linearDamping;
+            _baseAngularDrag = _rb.angularDamping;
+#else
             _baseDrag = _rb.drag;
             _baseAngularDrag = _rb.angularDrag;
+#endif // UNITY_6000_3_OR_NEWER
 
             _velocity = new NativeArray<float3>(_voxels.Length,
                 Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
