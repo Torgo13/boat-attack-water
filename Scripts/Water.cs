@@ -123,6 +123,8 @@ namespace WaterSystem
             Shader.SetGlobalMatrix(InvViewProjection,
                 (GL.GetGPUProjectionMatrix(cam.projectionMatrix, false) * cam.worldToCameraMatrix).inverse);
 
+#if WATER_RENDER_REQUEST
+#else
             // Water matrix
             const float quantizeValue = 6.25f;
             const float forwards = 10f;
@@ -150,6 +152,7 @@ namespace WaterSystem
                     LightProbeUsage.Off,
                     null);
             }
+#endif // WATER_RENDER_REQUEST
         }
 
         private static void SafeDestroy(Object o)
