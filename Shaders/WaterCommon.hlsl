@@ -145,15 +145,23 @@ WaterVertexOutput WaveVertexOperations(WaterVertexOutput input)
 	WaveStruct wave;
 	SampleWaves(input.posWS, saturate((waterDepth * 0.1 + 0.05)), wave);
 	input.normal = wave.normal;
+#if 0
     input.posWS += wave.position;
+#else
+    input.posWS.y += wave.position.y;
+#endif // 0
 
 #ifdef SHADER_API_PS4
 	input.posWS.y -= 0.5;
+#else
+	input.posWS.y -= 0.5;
 #endif
 
+#if 0
     // Dynamic displacement
 	half4 waterFX = SAMPLE_TEXTURE2D_LOD(_WaterFXMap, sampler_ScreenTextures_linear_clamp, screenUV.xy, 0);
 	input.posWS.y += waterFX.w * 2 - 1;
+#endif // 0
 
 	// After waves
 	input.clipPos = TransformWorldToHClip(input.posWS);

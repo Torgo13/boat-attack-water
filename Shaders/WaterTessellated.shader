@@ -7,7 +7,7 @@
 	}
 	SubShader
 	{
-		Tags { "RenderType"="Transparent" "Queue"="Transparent-100" "RenderPipeline" = "LightweightPipeline" }
+		Tags { "RenderType"="Transparent" "Queue"="Transparent-100" "RenderPipeline" = "UniversalPipeline" }
 		LOD 300
 		ZWrite Off
 
@@ -34,7 +34,7 @@
             // GPU Instancing
             #pragma multi_compile_instancing
             #pragma multi_compile_fog
-            
+
 			////////////////////INCLUDES//////////////////////
 			#include "WaterCommon.hlsl"
 			#include "WaterTessellation.hlsl"
