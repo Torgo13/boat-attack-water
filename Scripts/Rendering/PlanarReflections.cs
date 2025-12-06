@@ -205,16 +205,18 @@ namespace UnityEngine.Rendering.Universal
 
         private Camera CreateMirrorObjects()
         {
-            var go = new GameObject("Planar Reflections",typeof(Camera));
+            var go = new GameObject("Planar Reflections");
+            var reflectionCamera = go.AddComponent<Camera>();
             var cameraData = go.AddComponent(typeof(UniversalAdditionalCameraData)) as UniversalAdditionalCameraData;
 
             cameraData.requiresColorOption = CameraOverrideOption.Off;
             cameraData.requiresDepthOption = CameraOverrideOption.Off;
+#if ZERO // Use the default renderer
             cameraData.SetRenderer(1);
+#endif // ZERO
 
-            var t = transform;
-            var reflectionCamera = go.GetComponent<Camera>();
-            reflectionCamera.transform.SetPositionAndRotation(t.position, t.rotation);
+            transform.GetPositionAndRotation(out var pos, out var rot);
+            reflectionCamera.transform.SetPositionAndRotation(pos, rot);
             reflectionCamera.depth = -10;
             reflectionCamera.enabled = false;
             go.hideFlags = HideFlags.HideAndDontSave;
