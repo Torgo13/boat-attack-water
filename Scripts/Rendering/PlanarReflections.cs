@@ -5,6 +5,7 @@ using Unity.Mathematics;
 
 namespace UnityEngine.Rendering.Universal
 {
+    [Unity.Burst.BurstCompile]
     [ExecuteAlways]
     public class PlanarReflections : MonoBehaviour
     {
@@ -138,7 +139,7 @@ namespace UnityEngine.Rendering.Universal
 
             // Setup oblique projection matrix so that near plane is our reflection
             // plane. This way we clip everything below/above it for free.
-            var clipPlane = CameraSpacePlane(worldToCameraMatrix, pos - Vector3.up * 0.1f, normal, 1.0f);
+            CameraSpacePlane(out var clipPlane, worldToCameraMatrix, pos - Vector3.up * 0.1f, normal, 1.0f, m_settings.m_ClipPlaneOffset);
             var projection = realCamera.CalculateObliqueMatrix(clipPlane);
             _reflectionCamera.projectionMatrix = projection;
             _reflectionCamera.cullingMask = m_settings.m_ReflectLayers; // never render water layer
@@ -146,6 +147,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         // Calculates reflection matrix around the given plane
+        [Unity.Burst.BurstCompile]
         private static void CalculateReflectionMatrix(out Matrix4x4 reflectionMat, in Vector4 plane)
         {
             reflectionMat.m00 = (1F - 2F * plane[0] * plane[0]);
@@ -199,12 +201,13 @@ namespace UnityEngine.Rendering.Universal
         }
 
         // Given position/normal of the plane, calculates plane in camera space.
-        private Vector4 CameraSpacePlane(in Matrix4x4 m, in Vector3 pos, in Vector3 normal, float sideSign)
+        [Unity.Burst.BurstCompile]
+        private static void CameraSpacePlane(out Vector4 clipPlane, in Matrix4x4 m, in Vector3 pos, in Vector3 normal, float sideSign, float clipPlaneOffset)
         {
-            var offsetPos = pos + normal * m_settings.m_ClipPlaneOffset;
+            var offsetPos = pos + normal * clipPlaneOffset;
             var cameraPosition = m.MultiplyPoint(offsetPos);
             var cameraNormal = m.MultiplyVector(normal).normalized * sideSign;
-            return new Vector4(cameraNormal.x, cameraNormal.y, cameraNormal.z, -Vector3.Dot(cameraPosition, cameraNormal));
+            clipPlane = new Vector4(cameraNormal.x, cameraNormal.y, cameraNormal.z, -Vector3.Dot(cameraPosition, cameraNormal));
         }
 
         private Camera CreateMirrorObjects()
@@ -251,6 +254,7 @@ namespace UnityEngine.Rendering.Universal
             _reflectionCamera.targetTexture =  _reflectionTexture;
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         private static int2 ReflectionResolution(int pixelWidth, int pixelHeight, float scale)
         {
             var x = (int)(pixelWidth * scale);
@@ -307,21 +311,47 @@ namespace UnityEngine.Rendering.Universal
 
         readonly struct PlanarReflectionSettingData
         {
+            private readonly bool _useFog;
+            private readonly bool _useLod;
+
             private readonly bool _fog;
             private readonly int _maxLod;
             private readonly float _lodBias;
 
-            public PlanarReflectionSettingData(float lodBias = default)
+            public PlanarReflectionSettingData(bool useFog = default, float lodBias = default)
             {
-                _fog = RenderSettings.fog;
+                _useFog = useFog;
+                _useLod = lodBias != default;
+
+                if (_useFog)
+                    _fog = RenderSettings.fog;
+                else
+                    _fog = default;
+
+                if (!_useLod)
+                {
+                    _maxLod = default;
+                    _lodBias = 0.1f;
+                    return;
+                }
+
                 _maxLod = QualitySettings.maximumLODLevel;
-                _lodBias = lodBias > 0.1f ? lodBias : QualitySettings.lodBias;
+
+                if (lodBias > 0.1f)
+                    _lodBias = lodBias;
+                else
+                    _lodBias = QualitySettings.lodBias;
             }
 
             public void Set()
             {
                 GL.invertCulling = true;
-                RenderSettings.fog = false; // disable fog for now as it's incorrect with projection
+                if (_useFog)
+                    RenderSettings.fog = false; // disable fog for now as it's incorrect with projection
+
+                if (!_useLod)
+                    return;
+
                 QualitySettings.maximumLODLevel = 1;
                 QualitySettings.lodBias = Mathf.Max(0.1f, _lodBias * 0.5f);
             }
@@ -329,7 +359,12 @@ namespace UnityEngine.Rendering.Universal
             public void Restore()
             {
                 GL.invertCulling = false;
-                RenderSettings.fog = _fog;
+                if (_useFog)
+                    RenderSettings.fog = _fog;
+
+                if (!_useLod)
+                    return;
+
                 QualitySettings.maximumLODLevel = _maxLod;
                 QualitySettings.lodBias = Mathf.Max(0.1f, _lodBias);
             }

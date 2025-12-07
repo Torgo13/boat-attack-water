@@ -19,7 +19,9 @@ namespace WaterSystem
             private readonly ShaderTagId m_WaterFXShaderTag = new ShaderTagId("WaterFX");
             private readonly Color m_ClearColor = new Color(0.0f, 0.5f, 0.5f, 0.5f); //r = foam mask, g = normal.x, b = normal.z, a = displacement
             private FilteringSettings m_FilteringSettings;
+#if URP_COMPATIBILITY_MODE
             private RTHandle m_WaterFX;
+#endif // URP_COMPATIBILITY_MODE
 
             public class WaterFxData : ContextItem, IDisposable
             {
@@ -67,7 +69,9 @@ namespace WaterSystem
 
             public WaterFxPass()
             {
+#if URP_COMPATIBILITY_MODE
                 m_WaterFX = RTHandles.Alloc(k_WaterFXMapName, name: k_WaterFXMapName);
+#endif // URP_COMPATIBILITY_MODE
                 // only wanting to render transparent objects
                 m_FilteringSettings = new FilteringSettings(RenderQueueRange.transparent);
             }
@@ -173,7 +177,8 @@ namespace WaterSystem
             private const string k_RenderWaterCausticsTag = "Render Water Caustics";
             private ProfilingSampler m_WaterCaustics_Profile = new ProfilingSampler(k_RenderWaterCausticsTag);
             public Material WaterCausticMaterial;
-            private Mesh m_mesh;
+            private readonly Mesh m_mesh = GenerateCausticsMesh(1000f);
+            private static readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
 
 #if URP_COMPATIBILITY_MODE
             [Obsolete]
@@ -238,14 +243,11 @@ namespace WaterSystem
 
                     builder.SetRenderFunc((CausticsPassData data, RasterGraphContext context) =>
                     {
-                        var sunMatrix = RenderSettings.sun != null
-                        ? RenderSettings.sun.transform.localToWorldMatrix
-                        : Matrix4x4.TRS(Vector3.zero, Quaternion.Euler(-45f, 45f, 0f), Vector3.one);
-                        WaterCausticMaterial.SetMatrix("_MainLightDir", sunMatrix);
-
-                        // Create mesh if needed
-                        if (!m_mesh)
-                            m_mesh = GenerateCausticsMesh(1000f);
+                        var sun = RenderSettings.sun;
+                        var sunMatrix = sun != null
+                            ? sun.transform.localToWorldMatrix
+                            : Matrix4x4.TRS(default, Quaternion.Euler(-45f, 45f, 0f), Vector3.one);
+                        WaterCausticMaterial.SetMatrix(MainLightDir, sunMatrix);
 
                         // Create the matrix to position the caustics mesh.
                         var position = data.cameraPosition;
@@ -269,8 +271,10 @@ namespace WaterSystem
 
         private Material _causticMaterial;
 
+#if DEBUG
         private static readonly int SrcBlend = Shader.PropertyToID("_SrcBlend");
         private static readonly int DstBlend = Shader.PropertyToID("_DstBlend");
+#endif // DEBUG
         private static readonly int Size = Shader.PropertyToID("_Size");
         private static readonly int CausticTexture = Shader.PropertyToID("_CausticMap");
 
@@ -349,23 +353,26 @@ namespace WaterSystem
         private static Mesh GenerateCausticsMesh(float size)
         {
             var m = new Mesh();
+            m.indexFormat = IndexFormat.UInt16;
+            m.hideFlags = HideFlags.HideAndDontSave;
+
             size *= 0.5f;
 
-            var verts = new[]
+            m.SetVertices(new Unity.Collections.NativeArray<Vector3>(4,
+                Unity.Collections.Allocator.Temp, Unity.Collections.NativeArrayOptions.UninitializedMemory)
             {
-                new Vector3(-size, 0f, -size),
-                new Vector3(size, 0f, -size),
-                new Vector3(-size, 0f, size),
-                new Vector3(size, 0f, size)
-            };
-            m.vertices = verts;
+                [0] = new Vector3(-size, 0f, -size),
+                [1] = new Vector3(size, 0f, -size),
+                [2] = new Vector3(-size, 0f, size),
+                [3] = new Vector3(size, 0f, size),
+            });
 
-            var tris = new[]
+            m.SetIndices(new Unity.Collections.NativeArray<ushort>(6,
+                Unity.Collections.Allocator.Temp, Unity.Collections.NativeArrayOptions.UninitializedMemory)
             {
-                0, 2, 1,
-                2, 3, 1
-            };
-            m.triangles = tris;
+                [0] = 0, [1] = 2, [2] = 1,
+                [3] = 2, [4] = 3, [5] = 1,
+            }, MeshTopology.Triangles, submesh: 0);
 
             return m;
         }

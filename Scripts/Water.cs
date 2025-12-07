@@ -70,7 +70,7 @@ namespace WaterSystem
             if (!computeOverride)
                 _useComputeBuffer = SystemInfo.supportsComputeShaders &&
                                    Application.platform != RuntimePlatform.WebGLPlayer &&
-                                   Application.platform != RuntimePlatform.Android;
+                                   true; // Application.platform != RuntimePlatform.Android;
             else
                 _useComputeBuffer = false;
             Init();
@@ -257,8 +257,8 @@ namespace WaterSystem
             if (_useComputeBuffer)
             {
                 Shader.EnableKeyword("USE_STRUCTURED_BUFFER");
-                waveBuffer?.Dispose();
-                waveBuffer = new ComputeBuffer(10, (sizeof(float) * 6));
+                if (waveBuffer == null)
+                    waveBuffer = new ComputeBuffer(10, (sizeof(float) * 6));
                 waveBuffer.SetData(_waves);
                 Shader.SetGlobalBuffer(WaveDataBuffer, waveBuffer);
             }
@@ -292,7 +292,8 @@ namespace WaterSystem
                 var d = basicWaves.direction;
                 var l = basicWaves.wavelength;
                 var numWave = basicWaves.numWaves;
-                _waves = new Wave[numWave];
+                if (_waves == null || _waves.Length != numWave)
+                    _waves = new Wave[numWave];
 
                 var r = 1f / numWave;
 
@@ -315,13 +316,25 @@ namespace WaterSystem
 
         private void GenerateColorRamp()
         {
-            if(_rampTexture == null)
-                _rampTexture = new Texture2D(128, 4, GraphicsFormat.R8G8B8A8_SRGB, TextureCreationFlags.None);
-            _rampTexture.wrapMode = TextureWrapMode.Clamp;
+            bool createRampTexture = _rampTexture == null;
+
+#if UNITY_EDITOR
+            const bool makeNoLongerReadable = false;
+#else
+            const bool makeNoLongerReadable = true;
+            if (!createRampTexture)
+                return;
+#endif // UNITY_EDITOR
+
+            if (createRampTexture)
+            {
+                _rampTexture = new Texture2D(128, 4, GraphicsFormat.R8G8B8A8_SRGB, TextureCreationFlags.DontInitializePixels | TextureCreationFlags.DontUploadUponCreate);
+                _rampTexture.wrapMode = TextureWrapMode.Clamp;
+            }
 
             var defaultFoamRamp = resources.defaultFoamRamp;
 
-            var cols = new Color[512];
+            var cols = _rampTexture.GetRawTextureData<Color32>();
             for (var i = 0; i < 128; i++)
             {
                 cols[i] = surfaceData._absorptionRamp.Evaluate(i / 128f);
@@ -345,8 +358,7 @@ namespace WaterSystem
                         break;
                 }
             }
-            _rampTexture.SetPixels(cols);
-            _rampTexture.Apply();
+            _rampTexture.Apply(updateMipmaps: false, makeNoLongerReadable);
             Shader.SetGlobalTexture(AbsorptionScatteringRamp, _rampTexture);
         }
 
@@ -407,7 +419,7 @@ namespace WaterSystem
             Graphics.CopyTexture(_depthTex, tex2D);
             byte[] image = tex2D.EncodeToPNG();
             System.IO.File.WriteAllBytes(Application.dataPath + "/WaterDepth.png", image);
-            #endif*/
+#endif*/
 
             _depthCam.enabled = false;
             _depthCam.targetTexture = null;
