@@ -95,10 +95,14 @@ namespace UnityEngine.Rendering.Universal
 
             dest.CopyFrom(src);
             dest.useOcclusionCulling = false;
-            if (dest.gameObject.TryGetComponent(out UniversalAdditionalCameraData camData))
+            if (dest.TryGetComponent(out UniversalAdditionalCameraData camData))
             {
                 camData.renderShadows = m_settings.m_Shadows; // turn off shadows for the reflection camera
             }
+
+            dest.allowMSAA = false;
+            dest.allowDynamicResolution = true;
+            dest.forceIntoRenderTexture = true;
         }
 
         private void UpdateReflectionCamera(Camera realCamera)
@@ -107,7 +111,7 @@ namespace UnityEngine.Rendering.Universal
                 _reflectionCamera = CreateMirrorObjects();
 
             // find out the reflection plane: position and normal in world space
-            Vector3 pos = Vector3.zero;
+            Vector3 pos = default;
             Vector3 normal = Vector3.up;
             if (target != null)
             {
@@ -122,26 +126,27 @@ namespace UnityEngine.Rendering.Universal
             var d = -Vector3.Dot(normal, pos) - m_settings.m_ClipPlaneOffset;
             var reflectionPlane = new Vector4(normal.x, normal.y, normal.z, d);
 
-            var reflection = Matrix4x4.identity;
-            reflection *= Matrix4x4.Scale(new Vector3(1, -1, 1));
+            var realCameraTransform = realCamera.transform;
+            var _reflectionCameraTransform = _reflectionCamera.transform;
 
-            CalculateReflectionMatrix(ref reflection, reflectionPlane);
-            var oldPosition = realCamera.transform.position - new Vector3(0, pos.y * 2, 0);
+            CalculateReflectionMatrix(out var reflection, reflectionPlane);
+            var oldPosition = realCameraTransform.position - new Vector3(0, pos.y * 2, 0);
             var newPosition = ReflectPosition(oldPosition);
-            _reflectionCamera.transform.forward = Vector3.Scale(realCamera.transform.forward, new Vector3(1, -1, 1));
-            _reflectionCamera.worldToCameraMatrix = realCamera.worldToCameraMatrix * reflection;
+            _reflectionCameraTransform.forward = Vector3.Scale(realCameraTransform.forward, new Vector3(1, -1, 1));
+            var worldToCameraMatrix = realCamera.worldToCameraMatrix * reflection;
+            _reflectionCamera.worldToCameraMatrix = worldToCameraMatrix;
 
             // Setup oblique projection matrix so that near plane is our reflection
             // plane. This way we clip everything below/above it for free.
-            var clipPlane = CameraSpacePlane(_reflectionCamera, pos - Vector3.up * 0.1f, normal, 1.0f);
+            var clipPlane = CameraSpacePlane(worldToCameraMatrix, pos - Vector3.up * 0.1f, normal, 1.0f);
             var projection = realCamera.CalculateObliqueMatrix(clipPlane);
             _reflectionCamera.projectionMatrix = projection;
             _reflectionCamera.cullingMask = m_settings.m_ReflectLayers; // never render water layer
-            _reflectionCamera.transform.position = newPosition;
+            _reflectionCameraTransform.position = newPosition;
         }
 
         // Calculates reflection matrix around the given plane
-        private static void CalculateReflectionMatrix(ref Matrix4x4 reflectionMat, Vector4 plane)
+        private static void CalculateReflectionMatrix(out Matrix4x4 reflectionMat, in Vector4 plane)
         {
             reflectionMat.m00 = (1F - 2F * plane[0] * plane[0]);
             reflectionMat.m01 = (-2F * plane[0] * plane[1]);
@@ -194,10 +199,9 @@ namespace UnityEngine.Rendering.Universal
         }
 
         // Given position/normal of the plane, calculates plane in camera space.
-        private Vector4 CameraSpacePlane(Camera cam, Vector3 pos, Vector3 normal, float sideSign)
+        private Vector4 CameraSpacePlane(in Matrix4x4 m, in Vector3 pos, in Vector3 normal, float sideSign)
         {
             var offsetPos = pos + normal * m_settings.m_ClipPlaneOffset;
-            var m = cam.worldToCameraMatrix;
             var cameraPosition = m.MultiplyPoint(offsetPos);
             var cameraNormal = m.MultiplyVector(normal).normalized * sideSign;
             return new Vector4(cameraNormal.x, cameraNormal.y, cameraNormal.z, -Vector3.Dot(cameraPosition, cameraNormal));
@@ -221,6 +225,13 @@ namespace UnityEngine.Rendering.Universal
             reflectionCamera.enabled = false;
             go.hideFlags = HideFlags.HideAndDontSave;
 
+            var mainCamera = Camera.main;
+            if (mainCamera.TryGetComponent<Skybox>(out var skybox))
+            {
+                var reflectionSkybox = go.AddComponent<Skybox>();
+                reflectionSkybox.material = skybox.material;
+            }
+
             return reflectionCamera;
         }
 
@@ -228,19 +239,22 @@ namespace UnityEngine.Rendering.Universal
         {
             if (_reflectionTexture == null)
             {
-                var res = ReflectionResolution(cam, UniversalRenderPipeline.asset.renderScale);
+                var useDynamicScale = _reflectionCamera.scaledPixelHeight != _reflectionCamera.pixelHeight;
+                var res = ReflectionResolution(cam.pixelWidth, cam.pixelHeight, useDynamicScale ? 1.0f : GetScaleValue());
                 bool useHdr10 = RenderingUtils.SupportsRenderTextureFormat(RenderTextureFormat.RGB111110Float);
                 RenderTextureFormat hdrFormat = useHdr10 ? RenderTextureFormat.RGB111110Float : RenderTextureFormat.DefaultHDR;
                 _reflectionTexture = RenderTexture.GetTemporary(res.x, res.y, 16,
-                    GraphicsFormatUtility.GetGraphicsFormat(hdrFormat, true));
+                    GraphicsFormatUtility.GetGraphicsFormat(hdrFormat, true),
+                    antiAliasing: 1, RenderTextureMemoryless.None | RenderTextureMemoryless.MSAA,
+                    VRTextureUsage.None, useDynamicScale);
             }
             _reflectionCamera.targetTexture =  _reflectionTexture;
         }
 
-        private int2 ReflectionResolution(Camera cam, float scale)
+        private static int2 ReflectionResolution(int pixelWidth, int pixelHeight, float scale)
         {
-            var x = (int)(cam.pixelWidth * scale * GetScaleValue());
-            var y = (int)(cam.pixelHeight * scale * GetScaleValue());
+            var x = (int)(pixelWidth * scale);
+            var y = (int)(pixelHeight * scale);
             return new int2(x, y);
         }
 
@@ -291,17 +305,17 @@ namespace UnityEngine.Rendering.Universal
             Shader.DisableKeyword("_PLANAR_REFLECTION_CAMERA");            
         }
 
-        class PlanarReflectionSettingData
+        readonly struct PlanarReflectionSettingData
         {
             private readonly bool _fog;
             private readonly int _maxLod;
             private readonly float _lodBias;
 
-            public PlanarReflectionSettingData()
+            public PlanarReflectionSettingData(float lodBias = default)
             {
                 _fog = RenderSettings.fog;
                 _maxLod = QualitySettings.maximumLODLevel;
-                _lodBias = QualitySettings.lodBias;
+                _lodBias = lodBias > 0.1f ? lodBias : QualitySettings.lodBias;
             }
 
             public void Set()
@@ -309,7 +323,7 @@ namespace UnityEngine.Rendering.Universal
                 GL.invertCulling = true;
                 RenderSettings.fog = false; // disable fog for now as it's incorrect with projection
                 QualitySettings.maximumLODLevel = 1;
-                QualitySettings.lodBias = _lodBias * 0.5f;
+                QualitySettings.lodBias = Mathf.Max(0.1f, _lodBias * 0.5f);
             }
 
             public void Restore()
@@ -317,7 +331,7 @@ namespace UnityEngine.Rendering.Universal
                 GL.invertCulling = false;
                 RenderSettings.fog = _fog;
                 QualitySettings.maximumLODLevel = _maxLod;
-                QualitySettings.lodBias = _lodBias;
+                QualitySettings.lodBias = Mathf.Max(0.1f, _lodBias);
             }
         }
     }

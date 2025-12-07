@@ -112,6 +112,9 @@ namespace WaterSystem
             if (cam.cameraType == CameraType.Preview) return;
 
 #if WATER_RENDER_REQUEST
+            if (!cam.CompareTag("MainCamera"))
+                return;
+
             if (_planarReflections != null)
             {
                 _planarReflections.ExecutePlanarReflections(src, cam);
@@ -351,6 +354,7 @@ namespace WaterSystem
         ////////////////////////////////////////Shoreline Depth Texture/////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        [System.Diagnostics.Conditional("CAPTURE_DEPTH")]
         [ContextMenu("Capture Depth")]
         public void CaptureDepthMap()
         {
