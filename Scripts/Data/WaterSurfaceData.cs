@@ -42,16 +42,15 @@ namespace WaterSystem.Data
     }
 
     [System.Serializable]
-    public class BasicWaves
+    public struct BasicWaves
     {
-        public int numWaves = 6;
+        public const int numWaves = 8;
         public float amplitude;
         public float direction;
         public float wavelength;
 
         public BasicWaves(float amp, float dir, float len)
         {
-            numWaves = 6;
             amplitude = amp;
             direction = dir;
             wavelength = len;

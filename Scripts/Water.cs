@@ -26,7 +26,9 @@ namespace WaterSystem
         private Camera _depthCam;
         private Texture2D _rampTexture;
         [SerializeField]
-        public Wave[] _waves;
+        public Unity.Collections.NativeArray<Wave> _waves = new Unity.Collections.NativeArray<Wave>(BasicWaves.numWaves,
+            Unity.Collections.Allocator.Domain,
+            Unity.Collections.NativeArrayOptions.UninitializedMemory);
         [SerializeField]
         private ComputeBuffer waveBuffer;
         private float _maxWaveHeight;
@@ -265,13 +267,23 @@ namespace WaterSystem
             else
             {
                 Shader.DisableKeyword("USE_STRUCTURED_BUFFER");
-                Shader.SetGlobalVectorArray(WaveData, GetWaveData());
+                var waveData = UnityEngine.Pool.ListPool<Vector4>.Get();
+                Shader.SetGlobalVectorArray(WaveData, GetWaveData(waveData));
+                UnityEngine.Pool.ListPool<Vector4>.Release(waveData);
             }
         }
 
-        private Vector4[] GetWaveData()
+        private System.Collections.Generic.List<Vector4> GetWaveData(System.Collections.Generic.List<Vector4> waveData)
         {
-            var waveData = new Vector4[20];
+            var capacity = _waves.Length + 10;
+            if (waveData.Capacity < capacity)
+                waveData.Capacity = capacity;
+
+            for (var i = 0; i < capacity; i++)
+            {
+                waveData.Add(default);
+            }
+
             for (var i = 0; i < _waves.Length; i++)
             {
                 waveData[i] = new Vector4(_waves[i].amplitude, _waves[i].direction, _waves[i].wavelength, _waves[i].onmiDir);
@@ -282,6 +294,7 @@ namespace WaterSystem
 
         private void SetupWaves(bool custom)
         {
+#if ZERO
             if(!custom)
             {
                 //create basic waves based off basic wave settings
@@ -292,9 +305,7 @@ namespace WaterSystem
                 var d = basicWaves.direction;
                 var l = basicWaves.wavelength;
                 var numWave = basicWaves.numWaves;
-                if (_waves == null || _waves.Length != numWave)
-                    _waves = new Wave[numWave];
-
+                _waves = new Wave[numWave];
                 var r = 1f / numWave;
 
                 for (var i = 0; i < numWave; i++)
@@ -311,6 +322,37 @@ namespace WaterSystem
             else
             {
                 _waves = surfaceData._waves.ToArray();
+            }
+#else
+            Unity.Jobs.IJobForExtensions.Run(new SetupWavesJob
+            {
+                basicWaves = surfaceData._basicWaveSettings,
+                randomSeed = surfaceData.randomSeed,
+                _waves = _waves,
+            }, _waves.Length);
+#endif // ZERO
+        }
+
+        [Unity.Burst.BurstCompile]
+        private struct SetupWavesJob : Unity.Jobs.IJobFor
+        {
+            [Unity.Collections.ReadOnly] public BasicWaves basicWaves;
+            [Unity.Collections.ReadOnly] public int randomSeed;
+            [Unity.Collections.WriteOnly] public Unity.Collections.NativeArray<Wave> _waves;
+
+            public void Execute(int i)
+            {
+                var a = basicWaves.amplitude;
+                var d = basicWaves.direction;
+                var l = basicWaves.wavelength;
+                const float r = 1f / BasicWaves.numWaves;
+
+                var rand = new Unity.Mathematics.Random((uint)(randomSeed + i));
+                var p = Mathf.Lerp(0.5f, 1.5f, i * r);
+                var amp = a * p * rand.NextFloat(0.8f, 1.2f);
+                var dir = d + rand.NextFloat(-90f, 90f);
+                var len = l * p * rand.NextFloat(0.6f, 1.4f);
+                _waves[i] = new Wave(amp, dir, len, Vector2.zero, false);
             }
         }
 

@@ -122,13 +122,14 @@ namespace UnityEngine.Rendering.Universal
 
             UpdateCamera(realCamera, _reflectionCamera);
 
+            var realCameraTransform = realCamera.transformHandle;
+            var _reflectionCameraTransform = _reflectionCamera.transformHandle;
+
+#if ZERO
             // Render reflection
             // Reflect camera around reflection plane
             var d = -Vector3.Dot(normal, pos) - m_settings.m_ClipPlaneOffset;
             var reflectionPlane = new Vector4(normal.x, normal.y, normal.z, d);
-
-            var realCameraTransform = realCamera.transform;
-            var _reflectionCameraTransform = _reflectionCamera.transform;
 
             CalculateReflectionMatrix(out var reflection, reflectionPlane);
             var oldPosition = realCameraTransform.position - new Vector3(0, pos.y * 2, 0);
@@ -140,14 +141,40 @@ namespace UnityEngine.Rendering.Universal
             // Setup oblique projection matrix so that near plane is our reflection
             // plane. This way we clip everything below/above it for free.
             CameraSpacePlane(out var clipPlane, worldToCameraMatrix, pos - Vector3.up * 0.1f, normal, 1.0f, m_settings.m_ClipPlaneOffset);
+#else
+            UpdateReflectionCamera(out Matrix4x4 worldToCameraMatrix, out Vector4 clipPlane, out Vector3 newPosition, out Vector3 _reflectionCameraForward,
+                normal, pos, m_settings.m_ClipPlaneOffset, realCameraTransform.position, realCameraTransform.forward, realCamera.worldToCameraMatrix);
+            _reflectionCameraTransform.forward = _reflectionCameraForward;
+            _reflectionCamera.worldToCameraMatrix = worldToCameraMatrix;
+#endif // ZERO
+
             var projection = realCamera.CalculateObliqueMatrix(clipPlane);
             _reflectionCamera.projectionMatrix = projection;
             _reflectionCamera.cullingMask = m_settings.m_ReflectLayers; // never render water layer
             _reflectionCameraTransform.position = newPosition;
         }
 
-        // Calculates reflection matrix around the given plane
         [Unity.Burst.BurstCompile]
+        private static void UpdateReflectionCamera(out Matrix4x4 worldToCameraMatrix, out Vector4 clipPlane, out Vector3 newPosition, out Vector3 _reflectionCameraForward,
+            in Vector3 normal, in Vector3 pos, float m_ClipPlaneOffset, in Vector3 realCameraPosition, in Vector3 realCameraForward, in Matrix4x4 realCameraWorldToCameraMatrix)
+        {
+            // Render reflection
+            // Reflect camera around reflection plane
+            var d = -Vector3.Dot(normal, pos) - m_ClipPlaneOffset;
+            var reflectionPlane = new Vector4(normal.x, normal.y, normal.z, d);
+
+            CalculateReflectionMatrix(out var reflection, reflectionPlane);
+            var oldPosition = realCameraPosition - new Vector3(0, pos.y * 2, 0);
+            newPosition = ReflectPosition(oldPosition);
+            _reflectionCameraForward = Vector3.Scale(realCameraForward, new Vector3(1, -1, 1));
+            worldToCameraMatrix = realCameraWorldToCameraMatrix * reflection;
+
+            // Setup oblique projection matrix so that near plane is our reflection
+            // plane. This way we clip everything below/above it for free.
+            CameraSpacePlane(out clipPlane, worldToCameraMatrix, pos - Vector3.up * 0.1f, normal, 1.0f, m_ClipPlaneOffset);
+        }
+
+        // Calculates reflection matrix around the given plane
         private static void CalculateReflectionMatrix(out Matrix4x4 reflectionMat, in Vector4 plane)
         {
             reflectionMat.m00 = (1F - 2F * plane[0] * plane[0]);
@@ -201,7 +228,6 @@ namespace UnityEngine.Rendering.Universal
         }
 
         // Given position/normal of the plane, calculates plane in camera space.
-        [Unity.Burst.BurstCompile]
         private static void CameraSpacePlane(out Vector4 clipPlane, in Matrix4x4 m, in Vector3 pos, in Vector3 normal, float sideSign, float clipPlaneOffset)
         {
             var offsetPos = pos + normal * clipPlaneOffset;
