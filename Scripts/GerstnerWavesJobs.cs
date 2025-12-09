@@ -35,9 +35,11 @@ namespace WaterSystem
             _firstFrame = true;
             _processing = false;
             Registry.Clear();
-            
-            if(Debug.isDebugBuild)
+
+#if VERBOSE
+            if (Debug.isDebugBuild)
                 Debug.Log("Initializing Gerstner Waves Jobs");
+#endif // VERBOSE
             //Wave data
             _waveCount = Water.Instance._waves.Length;
             _waveData = new NativeArray<Wave>(_waveCount, Allocator.Persistent);
@@ -53,8 +55,10 @@ namespace WaterSystem
 
         public static void Cleanup()
         {
-            if(Debug.isDebugBuild)
+#if VERBOSE
+            if (Debug.isDebugBuild)
                 Debug.Log("Cleaning up Gerstner Wave Jobs");
+#endif // VERBOSE
             _waterHeightHandle.Complete();
 
             //Cleanup native arrays
@@ -153,8 +157,10 @@ namespace WaterSystem
             // The code actually running on the job
             public void Execute(int i)
             {
+#if ZERO
                 if (i < OffsetLength.x || i >= OffsetLength.y - OffsetLength.x) return;
-                
+#endif // ZERO
+
                 var waveCountMulti = 1f / WaveData.Length;
                 var wavePos = new float3(0f, 0f, 0f);
                 var waveNorm = new float3(0f, 0f, 0f);
@@ -198,9 +204,9 @@ namespace WaterSystem
                     ////////////////////////////normal output calculations/////////////////////////
                     var wa = w * amplitude;
                     // normal vector
-                    var norm = new float3(-(windDir.xy * wa * cosCalc),
+                    var norm = new float3(-(windDir.xy * (wa * cosCalc)),
                         1 - (qi * wa * sinCalc));
-                    waveNorm += (norm * waveCountMulti) * amplitude;
+                    waveNorm += norm * (waveCountMulti * amplitude);
                 }
                 OutPosition[i] = wavePos;
                 OutNormal[i] = math.normalize(waveNorm.xzy);

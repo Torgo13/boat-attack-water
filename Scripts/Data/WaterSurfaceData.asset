@@ -16,7 +16,7 @@ MonoBehaviour:
   _absorptionRamp:
     serializedVersion: 2
     key0: {r: 0.75686276, g: 0.96862745, b: 1, a: 1}
-    key1: {r: 0.75686276, g: 0.96862745, b: 1, a: 1}
+    key1: {r: 1, g: 1, b: 1, a: 1}
     key2: {r: 0, g: 0.5, b: 0.5, a: 0}
     key3: {r: 0, g: 0.275, b: 0.44, a: 0}
     key4: {r: 0, g: 0, b: 0, a: 0}
@@ -39,14 +39,14 @@ MonoBehaviour:
     atime5: 0
     atime6: 0
     atime7: 0
-    m_Mode: 1
+    m_Mode: 2
     m_ColorSpace: 0
     m_NumColorKeys: 2
     m_NumAlphaKeys: 2
   _scatterRamp:
     serializedVersion: 2
     key0: {r: 0, g: 0.18431373, b: 0.24705882, a: 1}
-    key1: {r: 0, g: 0.18431373, b: 0.24705882, a: 1}
+    key1: {r: 0, g: 0, b: 0, a: 1}
     key2: {r: 0, g: 0.5, b: 0.5, a: 0}
     key3: {r: 0, g: 0.25, b: 0.5, a: 0}
     key4: {r: 0, g: 0, b: 0, a: 0}
@@ -69,7 +69,7 @@ MonoBehaviour:
     atime5: 0
     atime6: 0
     atime7: 0
-    m_Mode: 1
+    m_Mode: 2
     m_ColorSpace: 0
     m_NumColorKeys: 2
     m_NumAlphaKeys: 2
@@ -82,7 +82,7 @@ MonoBehaviour:
     direction: 45
     wavelength: 4
   _foamSettings:
-    foamType: 0
+    foamType: 1
     basicFoam:
       serializedVersion: 2
       m_Curve:

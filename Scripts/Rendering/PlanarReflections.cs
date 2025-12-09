@@ -248,7 +248,7 @@ namespace UnityEngine.Rendering.Universal
                 RenderTextureFormat hdrFormat = useHdr10 ? RenderTextureFormat.RGB111110Float : RenderTextureFormat.DefaultHDR;
                 _reflectionTexture = RenderTexture.GetTemporary(res.x, res.y, 16,
                     GraphicsFormatUtility.GetGraphicsFormat(hdrFormat, true),
-                    antiAliasing: 1, RenderTextureMemoryless.None | RenderTextureMemoryless.MSAA,
+                    antiAliasing: 1, RenderTextureMemoryless.MSAA,
                     VRTextureUsage.None, useDynamicScale);
             }
             _reflectionCamera.targetTexture =  _reflectionTexture;
