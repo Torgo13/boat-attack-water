@@ -180,6 +180,7 @@ namespace WaterSystem
             public static Material WaterCausticMaterial;
             private static readonly Mesh m_mesh = GenerateCausticsMesh(1000f);
             private static readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
+            private static readonly int WaterLevel = Shader.PropertyToID("_WaterLevel");
 
 #if URP_COMPATIBILITY_MODE
             [Obsolete]
@@ -251,9 +252,12 @@ namespace WaterSystem
                             : Matrix4x4.TRS(default, Quaternion.Euler(-45f, 45f, 0f), Vector3.one);
                         WaterCausticMaterial.SetMatrix(MainLightDir, sunMatrix);
 
+                        const float waterHeight = 2f;
+                        WaterCausticMaterial.SetFloat(WaterLevel, waterHeight);
+
                         // Create the matrix to position the caustics mesh.
                         var position = data.cameraPosition;
-                        position.y = 0; // TODO should read a global 'water height' variable.
+                        position.y = waterHeight; // TODO should read a global 'water height' variable.
                         var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
 
                         context.cmd.DrawMesh(m_mesh, matrix, WaterCausticMaterial, 0, 0);
