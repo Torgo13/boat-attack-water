@@ -23,6 +23,7 @@ namespace WaterSystem
             private RTHandle m_WaterFX;
 #endif // URP_COMPATIBILITY_MODE
 
+            sealed
             public class WaterFxData : ContextItem, IDisposable
             {
                 private RTHandle m_RTHandle;
@@ -36,7 +37,7 @@ namespace WaterSystem
 
                     // Reallocate if the RTHandles are being initialized for the first time or if the targetDescriptor has changed since last frame.
                     RenderingUtils.ReAllocateHandleIfNeeded(ref m_RTHandle, targetDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: k_WaterFXMapName);
-                    
+
                     if (!m_TextureHandle.IsValid())
                     {
                         // Create the texture handles inside render graph by importing the RTHandles in render graph.
@@ -176,8 +177,8 @@ namespace WaterSystem
         {
             private const string k_RenderWaterCausticsTag = "Render Water Caustics";
             private ProfilingSampler m_WaterCaustics_Profile = new ProfilingSampler(k_RenderWaterCausticsTag);
-            public Material WaterCausticMaterial;
-            private readonly Mesh m_mesh = GenerateCausticsMesh(1000f);
+            public static Material WaterCausticMaterial;
+            private static readonly Mesh m_mesh = GenerateCausticsMesh(1000f);
             private static readonly int MainLightDir = Shader.PropertyToID("_MainLightDir");
 
 #if URP_COMPATIBILITY_MODE
@@ -220,6 +221,7 @@ namespace WaterSystem
                 public Vector3 cameraPosition;
             }
 
+            static
             bool ExecutionCheck(UniversalCameraData camData, UniversalResourceData resourceData)
             {
                 if (resourceData.activeColorTexture.IsValid() == false) return false;
@@ -241,7 +243,7 @@ namespace WaterSystem
                     builder.SetRenderAttachment(resourceData.activeColorTexture, 0);
                     builder.UseTexture(resourceData.cameraDepthTexture);
 
-                    builder.SetRenderFunc((CausticsPassData data, RasterGraphContext context) =>
+                    builder.SetRenderFunc(static (CausticsPassData data, RasterGraphContext context) =>
                     {
                         var sun = RenderSettings.sun;
                         var sunMatrix = sun != null
@@ -294,7 +296,7 @@ namespace WaterSystem
             }
             _causticMaterial = CoreUtils.CreateEngineMaterial(causticShader);
             _causticMaterial.SetFloat("_BlendDistance", settings.causticBlendDistance);
-            
+
             if (causticTexture == null)
             {
                 Debug.Log("Caustics Texture missing, attempting to load.");
@@ -303,7 +305,7 @@ namespace WaterSystem
 #endif
             }
             _causticMaterial.SetTexture(CausticTexture, causticTexture);
-            
+
             // TODO Fix debug settings.
             /*switch (settings.debug)
             {
@@ -326,9 +328,10 @@ namespace WaterSystem
             }*/
 
             _causticMaterial.SetFloat(Size, settings.causticScale);
-            m_CausticsPass.WaterCausticMaterial = _causticMaterial;
+            WaterCausticsPass.WaterCausticMaterial = _causticMaterial;
         }
 
+        static
         bool ShouldEnqueueForCamera(Camera camera)
         {
             return camera.cameraType == CameraType.SceneView || camera.CompareTag("MainCamera");

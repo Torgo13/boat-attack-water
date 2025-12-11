@@ -37,46 +37,49 @@ public static class LocalToWorldJob
             PositionsWorld = output,
             PositionsLocal = new NativeArray<float3>(positions.Length, Allocator.Persistent)
         };
-        
+
         for (var i = 0; i < positions.Length; i++)
             jobData.PositionsLocal[i] = positions[i];
-        
+
         Data.Add(guid, jobData);
     }
 
     public static void ScheduleJob(int guid, Matrix4x4 localToWorld)
     {
-        if (Data[guid].Processing)
+        var data = Data[guid];
+        if (data.Processing)
             return;
-        
-        Data[guid].Job = new LocalToWorldConvertJob()
+
+        data.Job = new LocalToWorldConvertJob()
         {
-            PositionsWorld = Data[guid].PositionsWorld,
-            PositionsLocal = Data[guid].PositionsLocal,
+            PositionsWorld = data.PositionsWorld,
+            PositionsLocal = data.PositionsLocal,
             Matrix = localToWorld
         };
-        
-        Data[guid].Handle = Data[guid].Job.Schedule();
-        Data[guid].Processing = true;
+
+        data.Handle = data.Job.Schedule();
+        data.Processing = true;
+        Data[guid] = data;
         JobHandle.ScheduleBatchedJobs();
     }
 
     public static void CompleteJob(int guid)
     {
-        Data[guid].Handle.Complete();
-        Data[guid].Processing = false;
+        var data = Data[guid];
+        data.Handle.Complete();
+        data.Processing = false;
+        Data[guid] = data;
     }
 
     public static void Cleanup(int guid)
     {
-        if (!Data.ContainsKey(guid)) return;
-        Data[guid].Handle.Complete();
-        Data[guid].PositionsWorld.Dispose();
-        Data[guid].PositionsLocal.Dispose();
-        Data.Remove(guid);
+        if (!Data.Remove(guid, out var data)) return;
+        data.Handle.Complete();
+        data.PositionsWorld.Dispose();
+        data.PositionsLocal.Dispose();
     }
 
-    class TransformLocalToWorld
+    struct TransformLocalToWorld
     {
         public NativeArray<float3> PositionsLocal;
         public NativeArray<float3> PositionsWorld;

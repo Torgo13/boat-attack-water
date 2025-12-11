@@ -358,7 +358,7 @@ namespace WaterSystem
 
         private void GenerateColorRamp()
         {
-            bool createRampTexture = _rampTexture == null;
+            var createRampTexture = _rampTexture == null;
 
 #if UNITY_EDITOR
             const bool makeNoLongerReadable = false;
@@ -426,7 +426,7 @@ namespace WaterSystem
             additionalCamData.requiresDepthOption = CameraOverrideOption.Off;
 
             var t = _depthCam.transform;
-            var depthExtra = 4.0f;
+            const float depthExtra = 4.0f;
             t.position = Vector3.up * (transform.position.y + depthExtra);//center the camera on this water plane height
             t.up = Vector3.forward;//face the camera down
 

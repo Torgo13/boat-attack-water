@@ -111,7 +111,7 @@ namespace WaterSystem
             // The object must have a Collider
             colliders = GetComponentsInChildren<Collider>();
             if (colliders.Length != 0) return;
-            
+
             colliders = new Collider[1];
             colliders[0] = gameObject.AddComponent<BoxCollider>();
             Debug.LogError($"Buoyancy:Object \"{name}\" had no coll. BoxCollider has been added.");
@@ -149,7 +149,7 @@ namespace WaterSystem
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            
+
             GerstnerWavesJobs.UpdateSamplePoints(ref _samplePoints, _guid);
             GerstnerWavesJobs.GetData(_guid, ref Heights, ref _normals);
         }
@@ -157,7 +157,7 @@ namespace WaterSystem
         private void FixedUpdate()
         {
             var submergedAmount = 0f;
-            
+
             switch (_buoyancyType)
             {
                 case BuoyancyType.PhysicalVoxel:
@@ -194,7 +194,7 @@ namespace WaterSystem
         }
 
         private void LateUpdate() { LocalToWorldConversion(); }
-        
+
         private void OnDestroy()
         {
             CleanUp();
@@ -215,7 +215,7 @@ namespace WaterSystem
         private void LocalToWorldConversion()
         {
             if (_buoyancyType != BuoyancyType.Physical && _buoyancyType != BuoyancyType.PhysicalVoxel) return;
-            
+
             var transformMatrix = transform.localToWorldMatrix;
             LocalToWorldJob.ScheduleJob(_guid, transformMatrix);
         }
@@ -227,7 +227,7 @@ namespace WaterSystem
             debug.Force = Vector3.zero;
 
             if (!(position.y - voxelResolution < waterHeight)) return;
-            
+
             var k = math.clamp(waterHeight - (position.y - voxelResolution), 0f, 1f);
 
             submergedAmount += k / _voxels.Length;
@@ -255,7 +255,7 @@ namespace WaterSystem
         private void SliceIntoVoxels()
         {
             _voxels = null;
-            var points = new List<Vector3>();
+            var points = UnityEngine.Pool.ListPool<Vector3>.Get();
 
             var rawBounds = VoxelBounds();
             _voxelBounds = rawBounds;
@@ -287,6 +287,7 @@ namespace WaterSystem
             }
 
             _voxels = points.ToArray();
+            UnityEngine.Pool.ListPool<Vector3>.Release(points);
             var voxelVolume = Mathf.Pow(voxelResolution, 3f) * _voxels.Length;
             var rawVolume = rawBounds.size.x * rawBounds.size.y * rawBounds.size.z;
             volume = Mathf.Min(rawVolume, voxelVolume);
@@ -310,6 +311,7 @@ namespace WaterSystem
             return new Vector3(Mathf.Ceil(vec.x / rounding) * rounding, Mathf.Ceil(vec.y / rounding) * rounding, Mathf.Ceil(vec.z / rounding) * rounding);
         }
 
+        static
         private bool PointIsInsideCollider(Collider c, Vector3 p)
         {
             var cp = Physics.ClosestPoint(p, c, Vector3.zero, Quaternion.identity);
@@ -326,7 +328,7 @@ namespace WaterSystem
             _rb.centerOfMass = centerOfMass + _voxelBounds.center;
             _baseDrag = _rb.linearDamping;
             _baseAngularDrag = _rb.angularDamping;
-            
+
             _velocity = new float3[_voxels.Length];
             var archimedesForceMagnitude = WaterDensity * Mathf.Abs(Physics.gravity.y) * volume;
             _localArchimedesForce = new float3(0, archimedesForceMagnitude, 0) / _voxels.Length;
@@ -389,7 +391,6 @@ namespace WaterSystem
                     }
                 }
             }
-
         }
 
         private struct DebugDrawing

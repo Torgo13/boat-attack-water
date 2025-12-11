@@ -182,7 +182,7 @@ namespace WaterSystem.Data
             // Wave type - Automatic / Customized
             //wavesType = EditorGUILayout.Popup("System Type", wavesType, wavesTypeOptions);
             // Toolbar labels here
-            
+
             var customWaves = serializedObject.FindProperty("_customWaves");
             var intVal = customWaves.boolValue ? 1 : 0;
             intVal = GUILayout.Toolbar(intVal, wavesTypeOptions);
@@ -195,9 +195,11 @@ namespace WaterSystem.Data
             case 0: //// Automatic ////
             {
                 var basicSettings = serializedObject.FindProperty("_basicWaveSettings");
+#if ZERO
                 // Wave count (display warning of on mobile platform and over 6) dropdown  1 > 10
                 var autoCount = basicSettings.FindPropertyRelative("numWaves");
                 EditorGUILayout.IntSlider(autoCount, 1, 10, new GUIContent("Wave Count", waveCountTT), null);
+#endif // ZERO
                 // Average Wave height - slider 0.05 - 30
                 var avgHeight = basicSettings.FindPropertyRelative("amplitude");
                 EditorGUILayout.Slider(avgHeight, 0.1f, 30.0f, new GUIContent("Avg Swell Height", avgHeightTT), null);
@@ -211,23 +213,23 @@ namespace WaterSystem.Data
                 if(GUILayout.Button(new GUIContent("Align to scene camera", alignButtonTT)))
                     windDir.floatValue = CameraRelativeDirection();
                 EditorGUILayout.EndHorizontal();
-                        // [override] - random otherwise(on creation/override check)
-                        // Random seed - int input
-                        EditorGUILayout.BeginHorizontal();
+                // [override] - random otherwise(on creation/override check)
+                // Random seed - int input
+                EditorGUILayout.BeginHorizontal();
 				var randSeed = serializedObject.FindProperty("randomSeed");
-                        randSeed.intValue = EditorGUILayout.IntField(new GUIContent("Random Seed", randSeedTT), randSeed.intValue);
-                        if (GUILayout.Button("Randomize Waves"))
+                randSeed.intValue = EditorGUILayout.IntField(new GUIContent("Random Seed", randSeedTT), randSeed.intValue);
+                if (GUILayout.Button("Randomize Waves"))
 				{
 					randSeed.intValue = System.DateTime.Now.Millisecond * 100 - System.DateTime.Now.Millisecond;
 				}
-                        EditorGUILayout.EndHorizontal();
+                EditorGUILayout.EndHorizontal();
             }
             break;
             case 1: //// Customized ////
             {
-                        EditorGUI.indentLevel -= 1;
-                        // Re-orderable list with wave details
-                        waveList.DoLayoutList();
+                EditorGUI.indentLevel -= 1;
+                // Re-orderable list with wave details
+                waveList.DoLayoutList();
                 /// Type - Directional / Omi-directional
                 //// Amplitude - slider 0.05 - 30
                 //// Wavelength - slider 1 - 200
@@ -318,7 +320,7 @@ namespace WaterSystem.Data
             if(camFwd.x < 0)
                 degrees *= -1f;
 
-            return Mathf.RoundToInt(degrees * 1000) / 1000;
+            return Mathf.Round(degrees * 1000) / 1000;
         }
 
         Vector2 CameraRelativeOrigin(Vector2 original)

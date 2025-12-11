@@ -175,7 +175,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         // Calculates reflection matrix around the given plane
-        private static void CalculateReflectionMatrix(out Matrix4x4 reflectionMat, in Vector4 plane)
+        private static void CalculateReflectionMatrix(out Matrix4x4 reflectionMat, Vector4 plane)
         {
             reflectionMat.m00 = (1F - 2F * plane[0] * plane[0]);
             reflectionMat.m01 = (-2F * plane[0] * plane[1]);
@@ -228,7 +228,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         // Given position/normal of the plane, calculates plane in camera space.
-        private static void CameraSpacePlane(out Vector4 clipPlane, in Matrix4x4 m, in Vector3 pos, in Vector3 normal, float sideSign, float clipPlaneOffset)
+        private static void CameraSpacePlane(out Vector4 clipPlane, Matrix4x4 m, Vector3 pos, Vector3 normal, float sideSign, float clipPlaneOffset)
         {
             var offsetPos = pos + normal * clipPlaneOffset;
             var cameraPosition = m.MultiplyPoint(offsetPos);
@@ -289,6 +289,8 @@ namespace UnityEngine.Rendering.Universal
         }
 
 #if WATER_RENDER_REQUEST
+        static readonly RenderPipeline.StandardRequest request = new RenderPipeline.StandardRequest();
+
         public void ExecutePlanarReflections(ScriptableRenderContext context, Camera camera)
 #else
         private void ExecutePlanarReflections(ScriptableRenderContext context, Camera camera)
@@ -308,15 +310,12 @@ namespace UnityEngine.Rendering.Universal
 
             var data = new PlanarReflectionSettingData(); // save quality settings and lower them for the planar reflections
             data.Set(); // set quality settings
-            
+
             Shader.EnableKeyword("_PLANAR_REFLECTION_CAMERA");
 
             BeginPlanarReflections?.Invoke(context, _reflectionCamera); // callback Action for PlanarReflection
 
 #if WATER_RENDER_REQUEST
-            // Create a standard request
-            var request = new RenderPipeline.StandardRequest();
-
             // Check if the request is supported by the active render pipeline
             if (RenderPipeline.SupportsRenderRequest(_reflectionCamera, request))
             {
@@ -332,7 +331,7 @@ namespace UnityEngine.Rendering.Universal
 
             data.Restore(); // restore the quality settings
             Shader.SetGlobalTexture(_planarReflectionTextureId, _reflectionTexture); // Assign texture to water shader
-            Shader.DisableKeyword("_PLANAR_REFLECTION_CAMERA");            
+            Shader.DisableKeyword("_PLANAR_REFLECTION_CAMERA");
         }
 
         readonly struct PlanarReflectionSettingData
