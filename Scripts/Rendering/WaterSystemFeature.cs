@@ -301,13 +301,13 @@ namespace WaterSystem
             _causticMaterial = CoreUtils.CreateEngineMaterial(causticShader);
             _causticMaterial.SetFloat("_BlendDistance", settings.causticBlendDistance);
 
+#if UNITY_EDITOR
             if (causticTexture == null)
             {
                 Debug.Log("Caustics Texture missing, attempting to load.");
-#if UNITY_EDITOR
                 causticTexture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Packages/com.verasl.water-system/Textures/WaterSurface_single.tif");
-#endif
             }
+#endif
             _causticMaterial.SetTexture(CausticTexture, causticTexture);
 
             // TODO Fix debug settings.
