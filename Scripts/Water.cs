@@ -259,7 +259,7 @@ namespace WaterSystem
             if (_useComputeBuffer)
             {
                 Shader.EnableKeyword("USE_STRUCTURED_BUFFER");
-                if (waveBuffer == null)
+                if (waveBuffer == null || !waveBuffer.IsValid())
                     waveBuffer = new ComputeBuffer(10, (sizeof(float) * 6));
                 waveBuffer.SetData(_waves);
                 Shader.SetGlobalBuffer(WaveDataBuffer, waveBuffer);
