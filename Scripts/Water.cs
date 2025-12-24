@@ -13,7 +13,8 @@ namespace WaterSystem
     public class Water : MonoBehaviour
     {
         // Singleton
-        public static Water Instance;
+        private static Water _instance;
+        public static Water Instance { get { if (_instance == default) { _instance = FindAnyObjectByType<Water>(FindObjectsInactive.Include); } return _instance; } }
 
         // Script references
         private PlanarReflections _planarReflections;
@@ -62,7 +63,7 @@ namespace WaterSystem
             var found = FindObjectsByType<Water>(FindObjectsSortMode.None);
             if (found.Length == 0) return;
             Debug.Assert(found.Length == 1); // Should be one and only one.
-            Instance = found[0];
+            _instance = found[0];
 
             GerstnerWavesJobs.Init();
         }
