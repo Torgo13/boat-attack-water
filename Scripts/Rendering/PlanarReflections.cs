@@ -5,7 +5,6 @@ using Unity.Mathematics;
 
 namespace UnityEngine.Rendering.Universal
 {
-    [Unity.Burst.BurstCompile]
     [ExecuteAlways]
     public class PlanarReflections : MonoBehaviour
     {
@@ -134,7 +133,7 @@ namespace UnityEngine.Rendering.Universal
             CalculateReflectionMatrix(out var reflection, reflectionPlane);
             var oldPosition = realCameraTransform.position - new Vector3(0, pos.y * 2, 0);
             var newPosition = ReflectPosition(oldPosition);
-            _reflectionCameraTransform.forward = Vector3.Scale(realCameraTransform.forward, new Vector3(1, -1, 1));
+            var forward = Quaternion.LookRotation(Vector3.Scale(realCameraTransform.forward, new Vector3(1, -1, 1)));
             var worldToCameraMatrix = realCamera.worldToCameraMatrix * reflection;
             _reflectionCamera.worldToCameraMatrix = worldToCameraMatrix;
 
@@ -142,36 +141,71 @@ namespace UnityEngine.Rendering.Universal
             // plane. This way we clip everything below/above it for free.
             CameraSpacePlane(out var clipPlane, worldToCameraMatrix, pos - Vector3.up * 0.1f, normal, 1.0f, m_settings.m_ClipPlaneOffset);
 #else
-            UpdateReflectionCamera(out Matrix4x4 worldToCameraMatrix, out Vector4 clipPlane, out Vector3 newPosition, out Vector3 _reflectionCameraForward,
-                normal, pos, m_settings.m_ClipPlaneOffset, realCameraTransform.position, realCameraTransform.forward, realCamera.worldToCameraMatrix);
-            _reflectionCameraTransform.forward = _reflectionCameraForward;
-            _reflectionCamera.worldToCameraMatrix = worldToCameraMatrix;
+            var output = new Unity.Collections.NativeArray<Matrix4x4>(2,
+                Unity.Collections.Allocator.TempJob, Unity.Collections.NativeArrayOptions.UninitializedMemory);
+
+            var updateReflectionCameraJob = new UpdateReflectionCameraJob
+            {
+                output = output,
+                normal = normal,
+                pos = pos,
+                m_ClipPlaneOffset = m_settings.m_ClipPlaneOffset,
+                realCameraPosition = realCameraTransform.position,
+                realCameraForward = realCameraTransform.forward,
+                realCameraWorldToCameraMatrix = realCamera.worldToCameraMatrix,
+            };
+
+            Unity.Jobs.IJobExtensions.RunByRef(ref updateReflectionCameraJob);
+
+            _reflectionCamera.worldToCameraMatrix = output[0];
+            var clipPlane = output[1].GetColumn(0);
+            Vector3 newPosition = output[1].GetColumn(1);
+            var forward = output[1].GetColumn(2);
+
+            output.Dispose();
 #endif // ZERO
 
             var projection = realCamera.CalculateObliqueMatrix(clipPlane);
             _reflectionCamera.projectionMatrix = projection;
             _reflectionCamera.cullingMask = m_settings.m_ReflectLayers; // never render water layer
-            _reflectionCameraTransform.position = newPosition;
+            _reflectionCameraTransform.SetPositionAndRotation(newPosition,
+                new Quaternion(forward.x, forward.y, forward.z, forward.w));
         }
 
         [Unity.Burst.BurstCompile]
-        private static void UpdateReflectionCamera(out Matrix4x4 worldToCameraMatrix, out Vector4 clipPlane, out Vector3 newPosition, out Vector3 _reflectionCameraForward,
-            in Vector3 normal, in Vector3 pos, float m_ClipPlaneOffset, in Vector3 realCameraPosition, in Vector3 realCameraForward, in Matrix4x4 realCameraWorldToCameraMatrix)
+        struct UpdateReflectionCameraJob : Unity.Jobs.IJob
         {
-            // Render reflection
-            // Reflect camera around reflection plane
-            var d = -Vector3.Dot(normal, pos) - m_ClipPlaneOffset;
-            var reflectionPlane = new Vector4(normal.x, normal.y, normal.z, d);
+            [Unity.Collections.WriteOnly]
+            public Unity.Collections.NativeArray<Matrix4x4> output;
+            public Matrix4x4 realCameraWorldToCameraMatrix;
+            public Vector3 normal;
+            public float m_ClipPlaneOffset;
+            public Vector3 pos;
+            public Vector3 realCameraPosition;
+            public Vector3 realCameraForward;
 
-            CalculateReflectionMatrix(out var reflection, reflectionPlane);
-            var oldPosition = realCameraPosition - new Vector3(0, pos.y * 2, 0);
-            newPosition = ReflectPosition(oldPosition);
-            _reflectionCameraForward = Vector3.Scale(realCameraForward, new Vector3(1, -1, 1));
-            worldToCameraMatrix = realCameraWorldToCameraMatrix * reflection;
+            public void Execute()
+            {
+                // Render reflection
+                // Reflect camera around reflection plane
+                var d = -Vector3.Dot(normal, pos) - m_ClipPlaneOffset;
+                var reflectionPlane = new Vector4(normal.x, normal.y, normal.z, d);
 
-            // Setup oblique projection matrix so that near plane is our reflection
-            // plane. This way we clip everything below/above it for free.
-            CameraSpacePlane(out clipPlane, worldToCameraMatrix, pos - Vector3.up * 0.1f, normal, 1.0f, m_ClipPlaneOffset);
+                CalculateReflectionMatrix(out var reflection, reflectionPlane);
+                var oldPosition = realCameraPosition - new Vector3(0, pos.y * 2, 0);
+                var newPosition = ReflectPosition(oldPosition);
+                var _reflectionCameraForward = Quaternion.LookRotation(ReflectPosition(realCameraForward));
+                var worldToCameraMatrix = realCameraWorldToCameraMatrix * reflection;
+
+                // Setup oblique projection matrix so that near plane is our reflection
+                // plane. This way we clip everything below/above it for free.
+                CameraSpacePlane(out var clipPlane, worldToCameraMatrix, pos - Vector3.up * 0.1f, normal, 1.0f, m_ClipPlaneOffset);
+
+                output[0] = worldToCameraMatrix;
+                output[1] = new Matrix4x4(clipPlane, newPosition,
+                    new Vector4(_reflectionCameraForward.x, _reflectionCameraForward.y,
+                    _reflectionCameraForward.z, _reflectionCameraForward.w), default);
+            }
         }
 
         // Calculates reflection matrix around the given plane
