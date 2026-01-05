@@ -21,8 +21,8 @@ namespace WaterSystem
     public class BuoyantObject : MonoBehaviour
     {
         public BuoyancyType _buoyancyType; // type of buoyancy to calculate
-        public float density; // density of the object, this is calculated off it's volume and mass
-        public float volume; // volume of the object, this is calculated via it's colliders
+        public float density; // density of the object, this is calculated off its volume and mass
+        public float volume; // volume of the object, this is calculated via its colliders
         public float voxelResolution = 0.51f; // voxel resolution, represents the half size of a voxel when creating the voxel representation
         private Bounds _voxelBounds; // bounds of the voxels
         public Vector3 centerOfMass = Vector3.zero; // Center Of Mass offset
@@ -41,7 +41,7 @@ namespace WaterSystem
         [NonSerialized] public float3[] Heights; // water height array(only size of 1 when simple or non-physical)
         private float3[] _normals; // water normal array(only used when non-physical and size of 1 also when simple)
         private float3[] _velocity; // voxel velocity for buoyancy
-        [SerializeField] Collider[] colliders; // colliders attatched ot this object
+        [SerializeField] Collider[] colliders; // colliders attatched to this object
         private Rigidbody _rb;
         private DebugDrawing[] _debugInfo; // For drawing force gizmos
         [NonSerialized] public float PercentSubmerged;
@@ -278,6 +278,7 @@ namespace WaterSystem
                             if (PointIsInsideCollider(t1, p))
                             {
                                 inside = true;
+                                break;
                             }
                         }
                         if(inside)

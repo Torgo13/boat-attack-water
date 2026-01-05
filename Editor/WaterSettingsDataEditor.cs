@@ -20,12 +20,14 @@ namespace WaterSystem.Data
 			switch(refType.enumValueIndex)
 			{
 				case 0:
-				{
-					// cubemap
-					var cube = serializedObject.FindProperty("cubemapRefType");
+#if ZERO
+                {
+                    // cubemap
+                    var cube = serializedObject.FindProperty("cubemapRefType");
 					EditorGUILayout.PropertyField(cube, new GUIContent("Cubemap Texture"));
 				}
 				break;
+#endif // ZERO
 				case 1:
 				{
 					// probe

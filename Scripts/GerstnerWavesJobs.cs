@@ -11,13 +11,13 @@ namespace WaterSystem
 	/// <summary>
 	/// C# Jobs system version of the Gerstner waves implementation
 	/// </summary>
-    public class GerstnerWavesJobs
+    public static class GerstnerWavesJobs
     {
         //General variables
         private static bool _firstFrame = true;
         private static bool _processing;
         private static int _waveCount;
-        private static NativeArray<Wave> _waveData; // Wave data from the water system
+        private static NativeArray<Wave> _waveData => Water.Instance._waves; // Wave data from the water system
 
         //Details for Buoyant Objects
         private static NativeArray<float3> _positions;
@@ -42,11 +42,13 @@ namespace WaterSystem
 #endif // VERBOSE
             //Wave data
             _waveCount = Water.Instance._waves.Length;
+#if ZERO
             _waveData = new NativeArray<Wave>(_waveCount, Allocator.Persistent);
             for (var i = 0; i < _waveData.Length; i++)
             {
                 _waveData[i] = Water.Instance._waves[i];
             }
+#endif // ZERO
 
             _positions = new NativeArray<float3>(4096, Allocator.Persistent);
             _wavePos = new NativeArray<float3>(4096, Allocator.Persistent);
