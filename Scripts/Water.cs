@@ -339,6 +339,7 @@ namespace WaterSystem
         {
             [Unity.Collections.ReadOnly] public BasicWaves basicWaves;
             [Unity.Collections.ReadOnly] public int randomSeed;
+            [Unity.Collections.NativeFixedLength(BasicWaves.numWaves)]
             [Unity.Collections.WriteOnly] public Unity.Collections.NativeArray<Wave> _waves;
 
             public void Execute(int i)

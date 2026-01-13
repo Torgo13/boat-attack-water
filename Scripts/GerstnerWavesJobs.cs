@@ -141,13 +141,17 @@ namespace WaterSystem
         [BurstCompile]
         private struct HeightJob : IJobParallelFor
         {
+            [NativeFixedLength(BasicWaves.numWaves)]
             [ReadOnly]
             public NativeArray<Wave> WaveData; // wave data stroed in vec4's like the shader version but packed into one
+            [NativeFixedLength(4096)]
             [ReadOnly]
             public NativeArray<float3> Position;
 
+            [NativeFixedLength(4096)]
             [WriteOnly]
             public NativeArray<float3> OutPosition;
+            [NativeFixedLength(4096)]
             [WriteOnly]
             public NativeArray<float3> OutNormal;
 

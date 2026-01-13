@@ -175,7 +175,7 @@ namespace UnityEngine.Rendering.Universal
         [Unity.Burst.BurstCompile]
         struct UpdateReflectionCameraJob : Unity.Jobs.IJob
         {
-            [Unity.Collections.WriteOnly]
+            [Unity.Collections.WriteOnly] [Unity.Collections.NativeFixedLength(2)]
             public Unity.Collections.NativeArray<Matrix4x4> output;
             public Matrix4x4 realCameraWorldToCameraMatrix;
             public Vector3 normal;
