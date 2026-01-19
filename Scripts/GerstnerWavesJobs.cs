@@ -16,8 +16,8 @@ namespace WaterSystem
         //General variables
         private static bool _firstFrame = true;
         private static bool _processing;
-        private static int _waveCount;
-        private static NativeArray<Wave> _waveData => Water.Instance._waves; // Wave data from the water system
+        public static NativeArray<Wave> WaveData => _waveData;
+        private static NativeArray<Wave> _waveData;
 
         //Details for Buoyant Objects
         private static NativeArray<float3> _positions;
@@ -31,7 +31,6 @@ namespace WaterSystem
         {
             _waterHeightHandle.Complete();
             _positionCount = 0;
-            _waveCount = 0;
             _firstFrame = true;
             _processing = false;
             Registry.Clear();
@@ -40,14 +39,18 @@ namespace WaterSystem
             if (Debug.isDebugBuild)
                 Debug.Log("Initializing Gerstner Waves Jobs");
 #endif // VERBOSE
+#if ZERO
             //Wave data
             _waveCount = Water.Instance._waves.Length;
-#if ZERO
             _waveData = new NativeArray<Wave>(_waveCount, Allocator.Persistent);
             for (var i = 0; i < _waveData.Length; i++)
             {
                 _waveData[i] = Water.Instance._waves[i];
             }
+#else
+            _waveData = new NativeArray<Wave>(BasicWaves.numWaves,
+                Allocator.Persistent,
+                NativeArrayOptions.UninitializedMemory);
 #endif // ZERO
 
             _positions = new NativeArray<float3>(4096, Allocator.Persistent);

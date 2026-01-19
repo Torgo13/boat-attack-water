@@ -8,8 +8,8 @@ struct Wave
 	float amplitude;
 	float direction;
 	float wavelength;
-	float2 origin;
 	float omni;
+	float2 origin;
 };
 
 #if defined(USE_STRUCTURED_BUFFER)

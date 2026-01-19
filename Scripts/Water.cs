@@ -26,10 +26,7 @@ namespace WaterSystem
         public Texture bakedDepthTex;
         private Camera _depthCam;
         private Texture2D _rampTexture;
-        [SerializeField]
-        public Unity.Collections.NativeArray<Wave> _waves = new Unity.Collections.NativeArray<Wave>(BasicWaves.numWaves,
-            Unity.Collections.Allocator.Domain,
-            Unity.Collections.NativeArrayOptions.UninitializedMemory);
+        public Unity.Collections.NativeArray<Wave> _waves => GerstnerWavesJobs.WaveData;
         [SerializeField]
         private ComputeBuffer waveBuffer;
         private float _maxWaveHeight;
@@ -64,7 +61,10 @@ namespace WaterSystem
             if (found.Length == 0) return;
             Debug.Assert(found.Length == 1); // Should be one and only one.
             _instance = found[0];
+        }
 
+        private void Awake()
+        {
             GerstnerWavesJobs.Init();
         }
 
@@ -108,6 +108,7 @@ namespace WaterSystem
             }
 
             waveBuffer?.Dispose();
+            _useComputeBuffer = false; // Prevent a new waveBuffer being created in SetWaves()
         }
 
         private void BeginCameraRendering(ScriptableRenderContext src, Camera cam)
@@ -224,7 +225,7 @@ namespace WaterSystem
             {
                 _maxWaveHeight += w.amplitude;
             }
-            _maxWaveHeight /= _waves.Length;
+            _maxWaveHeight /= BasicWaves.numWaves;
 
             _waveHeight = transform.position.y;
 
@@ -340,6 +341,7 @@ namespace WaterSystem
             [Unity.Collections.ReadOnly] public BasicWaves basicWaves;
             [Unity.Collections.ReadOnly] public int randomSeed;
             [Unity.Collections.NativeFixedLength(BasicWaves.numWaves)]
+            [Unity.Collections.NativeMatchesParallelForLength]
             [Unity.Collections.WriteOnly] public Unity.Collections.NativeArray<Wave> _waves;
 
             public void Execute(int i)
@@ -349,7 +351,7 @@ namespace WaterSystem
                 var l = basicWaves.wavelength;
                 const float r = 1f / BasicWaves.numWaves;
 
-                var rand = new Unity.Mathematics.Random((uint)(randomSeed + i));
+                var rand = Unity.Mathematics.Random.CreateFromIndex((uint)(randomSeed + i) % uint.MaxValue);
                 var p = Mathf.Lerp(0.5f, 1.5f, i * r);
                 var amp = a * p * rand.NextFloat(0.8f, 1.2f);
                 var dir = d + rand.NextFloat(-90f, 90f);

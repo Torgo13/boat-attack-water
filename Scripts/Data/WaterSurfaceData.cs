@@ -22,14 +22,15 @@ namespace WaterSystem.Data
         public bool _init = false;
     }
 
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     [System.Serializable]
     public struct Wave
     {
         public float amplitude; // height of the wave in units(m)
         public float direction; // direction the wave travels in degrees from Z+
         public float wavelength; // distance between crest>crest
-        public float2 origin; // Omi directional point of origin
         public float onmiDir; // Is omni?
+        public float2 origin; // Omi directional point of origin
 
         public Wave(float amp, float dir, float length, float2 org, bool omni)
         {
@@ -41,6 +42,7 @@ namespace WaterSystem.Data
         }
     }
 
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     [System.Serializable]
     public struct BasicWaves
     {

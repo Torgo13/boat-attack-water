@@ -14,7 +14,7 @@ namespace WaterSystem.Data
 		// planar
 		public PlanarReflections.PlanarReflectionSettings planarSettings; // Planar reflection settings
 		// cubemap
-		public Cubemap cubemapRefType => RenderSettings.customReflectionTexture as Cubemap; // custom cubemap reference
+		public Texture cubemapRefType => RenderSettings.customReflectionTexture; // custom cubemap reference
 
 		public bool isInfinite; // Is the water infinite (shader incomplete)
 		public Vector4 originOffset = new Vector4(0f, 0f, 500f, 500f);
