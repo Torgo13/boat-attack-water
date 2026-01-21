@@ -54,6 +54,7 @@ namespace WaterSystem
         private static readonly int AbsorptionScatteringRamp = Shader.PropertyToID("_AbsorptionScatteringRamp");
         private static readonly int DepthCamZParams = Shader.PropertyToID("_VeraslWater_DepthCamParams");
 
+#if UNITY_EDITOR
         [RuntimeInitializeOnLoadMethod]
         private static void RuntimeInitializeOnLoad()
         {
@@ -62,6 +63,7 @@ namespace WaterSystem
             Debug.Assert(found.Length == 1); // Should be one and only one.
             _instance = found[0];
         }
+#endif // UNITY_EDITOR
 
         private void Awake()
         {
@@ -73,7 +75,7 @@ namespace WaterSystem
             if (!computeOverride)
                 _useComputeBuffer = SystemInfo.supportsComputeShaders &&
                                    Application.platform != RuntimePlatform.WebGLPlayer &&
-                                   true; // Application.platform != RuntimePlatform.Android;
+                                   _waves.IsCreated; // Application.platform != RuntimePlatform.Android;
             else
                 _useComputeBuffer = false;
             Init();
@@ -164,7 +166,7 @@ namespace WaterSystem
 
         private static void SafeDestroy(Object o)
         {
-            if(Application.isPlaying)
+            if (Application.isPlaying)
                 Destroy(o);
             else
                 DestroyImmediate(o);
@@ -262,7 +264,7 @@ namespace WaterSystem
             {
                 Shader.EnableKeyword("USE_STRUCTURED_BUFFER");
                 if (waveBuffer == null || !waveBuffer.IsValid())
-                    waveBuffer = new ComputeBuffer(10, (sizeof(float) * 6));
+                    waveBuffer = new ComputeBuffer(10, (sizeof(float) * 6), ComputeBufferType.Structured, ComputeBufferMode.Immutable);
                 waveBuffer.SetData(_waves);
                 Shader.SetGlobalBuffer(WaveDataBuffer, waveBuffer);
             }
@@ -351,7 +353,7 @@ namespace WaterSystem
                 var l = basicWaves.wavelength;
                 const float r = 1f / BasicWaves.numWaves;
 
-                var rand = Unity.Mathematics.Random.CreateFromIndex((uint)(randomSeed + i) % uint.MaxValue);
+                var rand = Unity.Mathematics.Random.CreateFromIndex((uint)(randomSeed + i) % (uint.MaxValue - 1));
                 var p = Mathf.Lerp(0.5f, 1.5f, i * r);
                 var amp = a * p * rand.NextFloat(0.8f, 1.2f);
                 var dir = d + rand.NextFloat(-90f, 90f);

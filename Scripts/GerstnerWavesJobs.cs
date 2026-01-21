@@ -35,6 +35,14 @@ namespace WaterSystem
             _processing = false;
             Registry.Clear();
 
+            const NativeArrayOptions options = NativeArrayOptions.UninitializedMemory;
+            const Allocator allocator =
+#if UNITY_6000_0_OR_NEWER && UNITY_EDITOR
+                Allocator.Domain;
+#else
+                Allocator.Persistent;
+#endif // UNITY_6000_0_OR_NEWER && UNITY_EDITOR
+
 #if VERBOSE
             if (Debug.isDebugBuild)
                 Debug.Log("Initializing Gerstner Waves Jobs");
@@ -48,14 +56,12 @@ namespace WaterSystem
                 _waveData[i] = Water.Instance._waves[i];
             }
 #else
-            _waveData = new NativeArray<Wave>(BasicWaves.numWaves,
-                Allocator.Persistent,
-                NativeArrayOptions.UninitializedMemory);
+            _waveData = new NativeArray<Wave>(BasicWaves.numWaves, allocator, options);
 #endif // ZERO
 
-            _positions = new NativeArray<float3>(4096, Allocator.Persistent);
-            _wavePos = new NativeArray<float3>(4096, Allocator.Persistent);
-            _waveNormal = new NativeArray<float3>(4096, Allocator.Persistent);
+            _positions = new NativeArray<float3>(4096, allocator, options);
+            _wavePos = new NativeArray<float3>(4096, allocator, options);
+            _waveNormal = new NativeArray<float3>(4096, allocator, options);
         }
 
         public static void Cleanup()
@@ -170,11 +176,11 @@ namespace WaterSystem
                 if (i < OffsetLength.x || i >= OffsetLength.y - OffsetLength.x) return;
 #endif // ZERO
 
-                var waveCountMulti = 1f / WaveData.Length;
+                const float waveCountMulti = 1f / BasicWaves.numWaves;
                 var wavePos = new float3(0f, 0f, 0f);
                 var waveNorm = new float3(0f, 0f, 0f);
 
-                for (var wave = 0; wave < WaveData.Length; wave++) // for each wave
+                for (var wave = 0; wave < BasicWaves.numWaves; wave++) // for each wave
                 {
                     // Wave data vars
                     var pos = Position[i].xz;
@@ -187,7 +193,7 @@ namespace WaterSystem
                     var w = 6.28318f / wavelength; // 2pi over wavelength(hardcoded)
                     var wSpeed = math.sqrt(9.8f * w); // frequency of the wave based off wavelength
                     const float peak = 0.8f; // peak value, 1 is the sharpest peaks
-                    var qi = peak / (amplitude * w * WaveData.Length);
+                    var qi = peak / (amplitude * w * BasicWaves.numWaves);
 
                     var windDir = new float2(0f, 0f);
 
