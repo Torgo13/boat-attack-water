@@ -181,7 +181,7 @@ namespace WaterSystem
                 Shader.SetGlobalTexture(WaterDepthMap, bakedDepthTex);
             }
 
-            if (!gameObject.TryGetComponent(out _planarReflections))
+            if (!TryGetComponent(out _planarReflections))
             {
                 _planarReflections = gameObject.AddComponent<PlanarReflections>();
             }

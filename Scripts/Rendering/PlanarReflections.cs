@@ -46,13 +46,13 @@ namespace UnityEngine.Rendering.Universal
         {
             RenderPipelineManager.beginCameraRendering += ExecutePlanarReflections;
         }
-#endif // WATER_RENDER_REQUEST
 
         // Cleanup all the objects we possibly have created
         private void OnDisable()
         {
             Cleanup();
         }
+#endif // WATER_RENDER_REQUEST
 
         private void OnDestroy()
         {
@@ -69,7 +69,7 @@ namespace UnityEngine.Rendering.Universal
             if (_reflectionCamera)
             {
                 _reflectionCamera.targetTexture = null;
-                SafeDestroy(_reflectionCamera.gameObject);
+                Destroy(_reflectionCamera.gameObject);
             }
             if (_reflectionTexture)
             {
@@ -300,7 +300,7 @@ namespace UnityEngine.Rendering.Universal
 
         private void PlanarReflectionTexture(Camera cam)
         {
-            if (_reflectionTexture == null)
+            if (_reflectionTexture == null || !_reflectionTexture.IsCreated())
             {
                 var useDynamicScale = _reflectionCamera.scaledPixelHeight != _reflectionCamera.pixelHeight;
                 var res = ReflectionResolution(cam.pixelWidth, cam.pixelHeight, useDynamicScale ? 1.0f : GetScaleValue());
@@ -354,7 +354,7 @@ namespace UnityEngine.Rendering.Universal
             if (RenderPipeline.SupportsRenderRequest(_reflectionCamera, request))
             {
                 // Submit the render request to the active render pipeline with different destination textures
-                request.destination = _reflectionCamera.targetTexture;
+                request.destination = _reflectionTexture; //_reflectionCamera.targetTexture;
 
                 // Render camera and fill texture2D with its view
                 RenderPipeline.SubmitRenderRequest(_reflectionCamera, request);
