@@ -62,16 +62,18 @@ namespace WaterSystem
             if (found.Length == 0) return;
             Debug.Assert(found.Length == 1); // Should be one and only one.
             _instance = found[0];
+
+            GerstnerWavesJobs.Init();
         }
 #endif // UNITY_EDITOR
 
-        private void Awake()
-        {
-            GerstnerWavesJobs.Init();
-        }
-
         private void OnEnable()
         {
+            if (!_waves.IsCreated)
+            {
+                GerstnerWavesJobs.Init();
+            }
+
             if (!computeOverride)
                 _useComputeBuffer = SystemInfo.supportsComputeShaders &&
                                    Application.platform != RuntimePlatform.WebGLPlayer &&
@@ -121,7 +123,7 @@ namespace WaterSystem
             if (!cam.CompareTag("MainCamera"))
                 return;
 
-            if (_planarReflections != null)
+            if (_planarReflections != null && _planarReflections.isActiveAndEnabled)
             {
                 _planarReflections.ExecutePlanarReflections(src, cam);
             }
@@ -353,7 +355,7 @@ namespace WaterSystem
                 var l = basicWaves.wavelength;
                 const float r = 1f / BasicWaves.numWaves;
 
-                var rand = Unity.Mathematics.Random.CreateFromIndex((uint)(randomSeed + i) % (uint.MaxValue - 1));
+                var rand = Unity.Mathematics.Random.CreateFromIndex(unchecked((uint)(randomSeed + i) % (uint.MaxValue - 1)));
                 var p = Mathf.Lerp(0.5f, 1.5f, i * r);
                 var amp = a * p * rand.NextFloat(0.8f, 1.2f);
                 var dir = d + rand.NextFloat(-90f, 90f);

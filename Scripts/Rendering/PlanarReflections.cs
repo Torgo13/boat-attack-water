@@ -69,7 +69,7 @@ namespace UnityEngine.Rendering.Universal
             if (_reflectionCamera)
             {
                 _reflectionCamera.targetTexture = null;
-                Destroy(_reflectionCamera.gameObject);
+                SafeDestroy(_reflectionCamera.gameObject);
             }
             if (_reflectionTexture)
             {
@@ -79,7 +79,7 @@ namespace UnityEngine.Rendering.Universal
 
         private static void SafeDestroy(Object obj)
         {
-            if (Application.isEditor)
+            if (!Application.isPlaying)
             {
                 DestroyImmediate(obj);
             }
@@ -160,7 +160,7 @@ namespace UnityEngine.Rendering.Universal
             _reflectionCamera.worldToCameraMatrix = output[0];
             var clipPlane = output[1].GetColumn(0);
             Vector3 newPosition = output[1].GetColumn(1);
-            var forward = output[1].GetColumn(2);
+            var forward = output.Reinterpret<Quaternion>(4 * 4 * sizeof(float))[6];
 
             output.Dispose();
 #endif // ZERO
@@ -168,21 +168,20 @@ namespace UnityEngine.Rendering.Universal
             var projection = realCamera.CalculateObliqueMatrix(clipPlane);
             _reflectionCamera.projectionMatrix = projection;
             _reflectionCamera.cullingMask = m_settings.m_ReflectLayers; // never render water layer
-            _reflectionCameraTransform.SetPositionAndRotation(newPosition,
-                new Quaternion(forward.x, forward.y, forward.z, forward.w));
+            _reflectionCameraTransform.SetPositionAndRotation(newPosition, forward);
         }
 
         [Unity.Burst.BurstCompile]
         struct UpdateReflectionCameraJob : Unity.Jobs.IJob
         {
-            [Unity.Collections.WriteOnly] [Unity.Collections.NativeFixedLength(2)]
-            public Unity.Collections.NativeArray<Matrix4x4> output;
-            public Matrix4x4 realCameraWorldToCameraMatrix;
-            public Vector3 normal;
-            public float m_ClipPlaneOffset;
-            public Vector3 pos;
-            public Vector3 realCameraPosition;
-            public Vector3 realCameraForward;
+            [Unity.Collections.NativeFixedLength(2)]
+            [Unity.Collections.WriteOnly] public Unity.Collections.NativeArray<Matrix4x4> output;
+            [Unity.Collections.ReadOnly] public Matrix4x4 realCameraWorldToCameraMatrix;
+            [Unity.Collections.ReadOnly] public Vector3 normal;
+            [Unity.Collections.ReadOnly] public float m_ClipPlaneOffset;
+            [Unity.Collections.ReadOnly] public Vector3 pos;
+            [Unity.Collections.ReadOnly] public Vector3 realCameraPosition;
+            [Unity.Collections.ReadOnly] public Vector3 realCameraForward;
 
             public void Execute()
             {
@@ -204,7 +203,7 @@ namespace UnityEngine.Rendering.Universal
                 output[0] = worldToCameraMatrix;
                 output[1] = new Matrix4x4(clipPlane, newPosition,
                     new Vector4(_reflectionCameraForward.x, _reflectionCameraForward.y,
-                    _reflectionCameraForward.z, _reflectionCameraForward.w), default);
+                        _reflectionCameraForward.z, _reflectionCameraForward.w), default);
             }
         }
 
