@@ -54,30 +54,23 @@ namespace WaterSystem
         private static readonly int AbsorptionScatteringRamp = Shader.PropertyToID("_AbsorptionScatteringRamp");
         private static readonly int DepthCamZParams = Shader.PropertyToID("_VeraslWater_DepthCamParams");
 
-#if UNITY_EDITOR
         [RuntimeInitializeOnLoadMethod]
         private static void RuntimeInitializeOnLoad()
         {
+            GerstnerWavesJobs.Init();
+            
             var found = FindObjectsByType<Water>(FindObjectsSortMode.None);
             if (found.Length == 0) return;
             Debug.Assert(found.Length == 1); // Should be one and only one.
             _instance = found[0];
-
-            GerstnerWavesJobs.Init();
         }
-#endif // UNITY_EDITOR
 
         private void OnEnable()
         {
-            if (!_waves.IsCreated)
-            {
-                GerstnerWavesJobs.Init();
-            }
-
             if (!computeOverride)
                 _useComputeBuffer = SystemInfo.supportsComputeShaders &&
                                    Application.platform != RuntimePlatform.WebGLPlayer &&
-                                   _waves.IsCreated; // Application.platform != RuntimePlatform.Android;
+                                   true; // Application.platform != RuntimePlatform.Android;
             else
                 _useComputeBuffer = false;
             Init();
@@ -112,7 +105,6 @@ namespace WaterSystem
             }
 
             waveBuffer?.Dispose();
-            _useComputeBuffer = false; // Prevent a new waveBuffer being created in SetWaves()
         }
 
         private void BeginCameraRendering(ScriptableRenderContext src, Camera cam)
@@ -176,6 +168,9 @@ namespace WaterSystem
 
         public void Init()
         {
+            if (!_waves.IsCreated || !isActiveAndEnabled)
+                return;
+            
             SetWaves();
             GenerateColorRamp();
             if (bakedDepthTex)
