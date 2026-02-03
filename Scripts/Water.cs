@@ -10,11 +10,12 @@ using Random = UnityEngine.Random;
 namespace WaterSystem
 {
     [ExecuteAlways]
+    sealed
     public class Water : MonoBehaviour
     {
         // Singleton
         private static Water _instance;
-        public static Water Instance { get { if (_instance == default) { _instance = FindAnyObjectByType<Water>(FindObjectsInactive.Include); } return _instance; } }
+        public static Water Instance { get { if (_instance == null) { _instance = FindAnyObjectByType<Water>(FindObjectsInactive.Include); } return _instance; } }
 
         // Script references
         private PlanarReflections _planarReflections;
@@ -26,7 +27,7 @@ namespace WaterSystem
         public Texture bakedDepthTex;
         private Camera _depthCam;
         private Texture2D _rampTexture;
-        public Unity.Collections.NativeArray<Wave> _waves => GerstnerWavesJobs.WaveData;
+        public static Unity.Collections.NativeArray<Wave> _waves => GerstnerWavesJobs.WaveData;
         [SerializeField]
         private ComputeBuffer waveBuffer;
         private float _maxWaveHeight;
@@ -274,7 +275,10 @@ namespace WaterSystem
             }
         }
 
-        private System.Collections.Generic.List<Vector4> GetWaveData(System.Collections.Generic.List<Vector4> waveData)
+        [JetBrains.Annotations.NotNull]
+        static
+        private System.Collections.Generic.List<Vector4> GetWaveData(
+            [System.Diagnostics.CodeAnalysis.NotNull] System.Collections.Generic.List<Vector4> waveData)
         {
             var capacity = _waves.Length + 10;
             if (waveData.Capacity < capacity)
@@ -328,8 +332,8 @@ namespace WaterSystem
             Unity.Jobs.IJobForExtensions.Run(new SetupWavesJob
             {
                 basicWaves = surfaceData._basicWaveSettings,
-                randomSeed = surfaceData.randomSeed,
-                _waves = _waves,
+                randomSeed = (uint)surfaceData.randomSeed,
+                waves = _waves,
             }, _waves.Length);
 #endif // ZERO
         }
@@ -338,10 +342,10 @@ namespace WaterSystem
         private struct SetupWavesJob : Unity.Jobs.IJobFor
         {
             [Unity.Collections.ReadOnly] public BasicWaves basicWaves;
-            [Unity.Collections.ReadOnly] public int randomSeed;
+            [Unity.Collections.ReadOnly] public uint randomSeed;
             [Unity.Collections.NativeFixedLength(BasicWaves.numWaves)]
             [Unity.Collections.NativeMatchesParallelForLength]
-            [Unity.Collections.WriteOnly] public Unity.Collections.NativeArray<Wave> _waves;
+            [Unity.Collections.WriteOnly] public Unity.Collections.NativeArray<Wave> waves;
 
             public void Execute(int i)
             {
@@ -350,18 +354,18 @@ namespace WaterSystem
                 var l = basicWaves.wavelength;
                 const float r = 1f / BasicWaves.numWaves;
 
-                var rand = Unity.Mathematics.Random.CreateFromIndex(unchecked((uint)(randomSeed + i) % (uint.MaxValue - 1)));
+                var rand = Unity.Mathematics.Random.CreateFromIndex(randomSeed % (uint.MaxValue - 1));
                 var p = Mathf.Lerp(0.5f, 1.5f, i * r);
                 var amp = a * p * rand.NextFloat(0.8f, 1.2f);
                 var dir = d + rand.NextFloat(-90f, 90f);
                 var len = l * p * rand.NextFloat(0.6f, 1.4f);
-                _waves[i] = new Wave(amp, dir, len, Vector2.zero, false);
+                waves[i] = new Wave(amp, dir, len, org: default, omni: false);
             }
         }
 
         private void GenerateColorRamp()
         {
-            var createRampTexture = _rampTexture == null;
+            bool createRampTexture = _rampTexture == null;
 
 #if UNITY_EDITOR
             const bool makeNoLongerReadable = false;
@@ -377,7 +381,7 @@ namespace WaterSystem
                 _rampTexture.wrapMode = TextureWrapMode.Clamp;
             }
 
-            var defaultFoamRamp = resources.defaultFoamRamp;
+            Texture2D defaultFoamRamp = resources.defaultFoamRamp;
 
             var cols = _rampTexture.GetRawTextureData<Color32>();
             for (var i = 0; i < 128; i++)
@@ -399,7 +403,7 @@ namespace WaterSystem
                         cols[i + 256] = defaultFoamRamp.GetPixelBilinear(surfaceData._foamSettings.basicFoam.Evaluate(i / 128f) , 0.5f);
                         break;
                     case 2: // custom
-                        cols[i + 256] = Color.black;
+                        cols[i + 256] = new Color32(0, 0, 0, byte.MaxValue); //Color.black;
                         break;
                 }
             }
@@ -454,7 +458,7 @@ namespace WaterSystem
             _depthCam.targetTexture = _depthTex;
             _depthCam.Render();
             Shader.SetGlobalTexture(WaterDepthMap, _depthTex);
-            // set depth bufferParams for depth cam(since it doesnt exist and only temporary)
+            // set depth bufferParams for depth cam(since it doesn't exist and only temporary)
             var _params = new Vector4(t.position.y, 250, 0, 0);
             //Vector4 zParams = new Vector4(1-f/n, f/n, (1-f/n)/f, (f/n)/f);//2015
             Shader.SetGlobalVector(DepthCamZParams, _params);

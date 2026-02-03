@@ -7,6 +7,7 @@ namespace WaterSystem
     /// Camera script to align the water mesh with the camera in a quantized manner
     /// </summary>
     [ExecuteInEditMode]
+    sealed
     public class MainCameraAlign : MonoBehaviour
     {
 

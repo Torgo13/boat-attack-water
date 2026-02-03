@@ -125,7 +125,9 @@ namespace WaterSystem
             {
                 WaveData = _waveData,
                 Position = _positions,
+#if ZERO
                 OffsetLength = new int2(0, _positions.Length),
+#endif // ZERO
                 Time = t,
                 OutPosition = _wavePos,
                 OutNormal = _waveNormal
@@ -152,7 +154,7 @@ namespace WaterSystem
         {
             [NativeFixedLength(BasicWaves.numWaves)]
             [ReadOnly]
-            public NativeArray<Wave> WaveData; // wave data stroed in vec4's like the shader version but packed into one
+            public NativeArray<Wave> WaveData; // wave data stored in vec4's like the shader version but packed into one
             [NativeFixedLength(4096)]
             [ReadOnly]
             public NativeArray<float3> Position;
@@ -166,8 +168,10 @@ namespace WaterSystem
 
             [ReadOnly]
             public float Time;
+#if ZERO
             [ReadOnly]
             public int2 OffsetLength;
+#endif // ZERO
 
             // The code actually running on the job
             public void Execute(int i)

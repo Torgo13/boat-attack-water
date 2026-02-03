@@ -10,23 +10,22 @@ public static class LocalToWorldJob
     private static readonly Dictionary<int, TransformLocalToWorld> Data = new Dictionary<int, TransformLocalToWorld>();
 
     [BurstCompile]
-    struct LocalToWorldConvertJob : IJob
+    struct LocalToWorldConvertJob : IJobFor
     {
+        [NativeMatchesParallelForLength]
         [WriteOnly] public NativeArray<float3> PositionsWorld;
         [ReadOnly] public Matrix4x4 Matrix;
+        [NativeMatchesParallelForLength]
         [ReadOnly] public NativeArray<float3> PositionsLocal;
 
         // The code actually running on the job
-        public void Execute()
+        public void Execute(int i)
         {
-            for (var i = 0; i < PositionsLocal.Length; i++)
-            {
-                var pos = float4.zero;
-                pos.xyz = PositionsLocal[i];
-                pos.w = 1f;
-                pos = Matrix * pos;
-                PositionsWorld[i] = pos.xyz;
-            }
+            var pos = float4.zero;
+            pos.xyz = PositionsLocal[i];
+            pos.w = 1f;
+            pos = Matrix * pos;
+            PositionsWorld[i] = pos.xyz;
         }
     }
 
@@ -57,7 +56,7 @@ public static class LocalToWorldJob
             Matrix = localToWorld
         };
 
-        data.Handle = data.Job.Schedule();
+        data.Handle = data.Job.Schedule(data.PositionsLocal.Length, dependency: default);
         data.Processing = true;
         Data[guid] = data;
         JobHandle.ScheduleBatchedJobs();

@@ -6,10 +6,11 @@ using Unity.Mathematics;
 namespace UnityEngine.Rendering.Universal
 {
     [ExecuteAlways]
+    sealed
     public class PlanarReflections : MonoBehaviour
     {
         [Serializable]
-        public enum ResolutionMulltiplier
+        public enum ResolutionMultiplier
         {
             Full,
             Half,
@@ -20,7 +21,7 @@ namespace UnityEngine.Rendering.Universal
         [Serializable]
         public class PlanarReflectionSettings
         {
-            public ResolutionMulltiplier m_ResolutionMultiplier = ResolutionMulltiplier.Third;
+            public ResolutionMultiplier m_ResolutionMultiplier = ResolutionMultiplier.Third;
             public float m_ClipPlaneOffset = 0.07f;
             public LayerMask m_ReflectLayers = -1;
             public bool m_Shadows;
@@ -105,10 +106,10 @@ namespace UnityEngine.Rendering.Universal
             dest.forceIntoRenderTexture = true;
         }
 
-        private void UpdateReflectionCamera(Camera realCamera)
+        private void UpdateReflectionCamera([System.Diagnostics.CodeAnalysis.NotNull] Camera realCamera)
         {
             if (_reflectionCamera == null)
-                _reflectionCamera = CreateMirrorObjects();
+                _reflectionCamera = CreateMirrorObjects(realCamera);
 
             // find out the reflection plane: position and normal in world space
             Vector3 pos = default;
@@ -241,13 +242,13 @@ namespace UnityEngine.Rendering.Universal
         {
             switch(m_settings.m_ResolutionMultiplier)
             {
-                case ResolutionMulltiplier.Full:
+                case ResolutionMultiplier.Full:
                     return 1f;
-                case ResolutionMulltiplier.Half:
+                case ResolutionMultiplier.Half:
                     return 0.5f;
-                case ResolutionMulltiplier.Third:
+                case ResolutionMultiplier.Third:
                     return 0.33f;
-                case ResolutionMulltiplier.Quarter:
+                case ResolutionMultiplier.Quarter:
                     return 0.25f;
                 default:
                     return 0.5f; // default to half res
@@ -269,11 +270,12 @@ namespace UnityEngine.Rendering.Universal
             clipPlane = new Vector4(cameraNormal.x, cameraNormal.y, cameraNormal.z, -Vector3.Dot(cameraPosition, cameraNormal));
         }
 
-        private Camera CreateMirrorObjects()
+        [JetBrains.Annotations.NotNull]
+        private Camera CreateMirrorObjects([System.Diagnostics.CodeAnalysis.NotNull] Camera realCamera)
         {
             var go = new GameObject("Planar Reflections");
             var reflectionCamera = go.AddComponent<Camera>();
-            var cameraData = go.AddComponent(typeof(UniversalAdditionalCameraData)) as UniversalAdditionalCameraData;
+            var cameraData = go.AddComponent<UniversalAdditionalCameraData>();
 
             cameraData.requiresColorOption = CameraOverrideOption.Off;
             cameraData.requiresDepthOption = CameraOverrideOption.Off;
@@ -287,8 +289,7 @@ namespace UnityEngine.Rendering.Universal
             reflectionCamera.enabled = false;
             go.hideFlags = HideFlags.HideAndDontSave;
 
-            var mainCamera = Camera.main;
-            if (mainCamera.TryGetComponent<Skybox>(out var skybox))
+            if (realCamera.TryGetComponent<Skybox>(out var skybox))
             {
                 var reflectionSkybox = go.AddComponent<Skybox>();
                 reflectionSkybox.material = skybox.material;
@@ -376,19 +377,19 @@ namespace UnityEngine.Rendering.Universal
             private readonly int _maxLod;
             private readonly float _lodBias;
 
-            public PlanarReflectionSettingData(bool useFog = default, float lodBias = default)
+            public PlanarReflectionSettingData(bool useFog = false, float lodBias = 0)
             {
                 _useFog = useFog;
-                _useLod = lodBias != default;
+                _useLod = lodBias != 0;
 
                 if (_useFog)
                     _fog = RenderSettings.fog;
                 else
-                    _fog = default;
+                    _fog = false;
 
                 if (!_useLod)
                 {
-                    _maxLod = default;
+                    _maxLod = 0;
                     _lodBias = 0.1f;
                     return;
                 }

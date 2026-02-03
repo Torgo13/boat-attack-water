@@ -18,6 +18,7 @@ using Unity.Mathematics;
 
 namespace WaterSystem
 {
+    sealed
     public class BuoyantObject : MonoBehaviour
     {
         public BuoyancyType _buoyancyType; // type of buoyancy to calculate
@@ -41,7 +42,7 @@ namespace WaterSystem
         [NonSerialized] public float3[] Heights; // water height array(only size of 1 when simple or non-physical)
         private float3[] _normals; // water normal array(only used when non-physical and size of 1 also when simple)
         private float3[] _velocity; // voxel velocity for buoyancy
-        [SerializeField] Collider[] colliders; // colliders attatched to this object
+        [SerializeField] Collider[] colliders; // colliders attached to this object
         private Rigidbody _rb;
         private DebugDrawing[] _debugInfo; // For drawing force gizmos
         [NonSerialized] public float PercentSubmerged;

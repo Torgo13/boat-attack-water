@@ -6,25 +6,29 @@ using System;
 
 namespace WaterSystem
 {
+    sealed
     public class WaterSystemFeature : ScriptableRendererFeature
     {
         #region Water Effects Pass
 
+        sealed
         class WaterFxPass : ScriptableRenderPass
         {
             private const string k_RenderWaterFXTag = "Render Water FX";
             private const string k_WaterFXMapName = "_WaterFXMap";
             private readonly int m_WaterFXMapID = Shader.PropertyToID(k_WaterFXMapName);
+            readonly
             private ProfilingSampler m_WaterFX_Profile = new ProfilingSampler(k_RenderWaterFXTag);
             private readonly ShaderTagId m_WaterFXShaderTag = new ShaderTagId("WaterFX");
             private readonly Color m_ClearColor = new Color(0.0f, 0.5f, 0.5f, 0.5f); //r = foam mask, g = normal.x, b = normal.z, a = displacement
+            readonly
             private FilteringSettings m_FilteringSettings;
 #if URP_COMPATIBILITY_MODE
             private RTHandle m_WaterFX;
 #endif // URP_COMPATIBILITY_MODE
 
             sealed
-            public class WaterFxData : ContextItem, IDisposable
+            private class WaterFxData : ContextItem, IDisposable
             {
                 private RTHandle m_RTHandle;
                 public TextureHandle m_TextureHandle;
@@ -62,6 +66,7 @@ namespace WaterSystem
                 }
             }
 
+            sealed
             private class WaterFxPassData
             {
                 public RendererListHandle renderListHdl;
@@ -77,7 +82,7 @@ namespace WaterSystem
                 m_FilteringSettings = new FilteringSettings(RenderQueueRange.transparent);
             }
 
-            public static void ConfigureCameraDescriptor(ref RenderTextureDescriptor cameraTextureDescriptor)
+            private static void ConfigureCameraDescriptor(ref RenderTextureDescriptor cameraTextureDescriptor)
             {
                 // no need for a depth buffer
                 cameraTextureDescriptor.depthBufferBits = 0;
@@ -173,9 +178,11 @@ namespace WaterSystem
 
         #region Caustics Pass
 
+        sealed
         class WaterCausticsPass : ScriptableRenderPass
         {
             private const string k_RenderWaterCausticsTag = "Render Water Caustics";
+            readonly
             private ProfilingSampler m_WaterCaustics_Profile = new ProfilingSampler(k_RenderWaterCausticsTag);
             public static Material WaterCausticMaterial;
             private static readonly Mesh m_mesh = GenerateCausticsMesh(1000f);
@@ -217,6 +224,7 @@ namespace WaterSystem
             }
 #endif
 
+            sealed
             private class CausticsPassData
             {
                 public Vector3 cameraPosition;
@@ -357,6 +365,7 @@ namespace WaterSystem
         /// </summary>
         /// <param name="size">The length of the quad.</param>
         /// <returns></returns>
+        [JetBrains.Annotations.NotNull]
         private static Mesh GenerateCausticsMesh(float size)
         {
             var m = new Mesh();

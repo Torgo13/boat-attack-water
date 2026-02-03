@@ -30,6 +30,7 @@ namespace WaterSystem.Data
         public float direction; // direction the wave travels in degrees from Z+
         public float wavelength; // distance between crest>crest
         public float onmiDir; // Is omni?
+        public float omniDir { get => onmiDir; set => onmiDir = value; } // Is omni?
         public float2 origin; // Omi directional point of origin
 
         public Wave(float amp, float dir, float length, float2 org, bool omni)
