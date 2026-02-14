@@ -36,12 +36,7 @@ namespace WaterSystem
             Registry.Clear();
 
             const NativeArrayOptions options = NativeArrayOptions.UninitializedMemory;
-            const Allocator allocator =
-#if UNITY_6000_0_OR_NEWER && UNITY_EDITOR
-                Allocator.Domain;
-#else
-                Allocator.Persistent;
-#endif // UNITY_6000_0_OR_NEWER && UNITY_EDITOR
+            const Allocator allocator = Allocator.Persistent;
 
 #if VERBOSE
             if (Debug.isDebugBuild)

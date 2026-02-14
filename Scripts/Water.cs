@@ -55,6 +55,7 @@ namespace WaterSystem
         private static readonly int AbsorptionScatteringRamp = Shader.PropertyToID("_AbsorptionScatteringRamp");
         private static readonly int DepthCamZParams = Shader.PropertyToID("_VeraslWater_DepthCamParams");
 
+#if ZERO
         [RuntimeInitializeOnLoadMethod]
         private static void RuntimeInitializeOnLoad()
         {
@@ -65,6 +66,12 @@ namespace WaterSystem
             Debug.Assert(found.Length == 1); // Should be one and only one.
             _instance = found[0];
         }
+#else
+        private void Awake()
+        {
+            GerstnerWavesJobs.Init();
+        }
+#endif // ZERO
 
         private void OnEnable()
         {
@@ -87,7 +94,11 @@ namespace WaterSystem
             Cleanup();
         }
 
+#if ZERO
         private void OnApplicationQuit()
+#else
+        private void OnDestroy()
+#endif // ZERO
         {
             GerstnerWavesJobs.Cleanup();
         }
