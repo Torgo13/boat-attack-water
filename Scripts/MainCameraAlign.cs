@@ -25,10 +25,12 @@ namespace WaterSystem
             RenderPipelineManager.beginCameraRendering -= UpdatePosition;
         }
 
+#if ZERO
         private void OnDestroy()
         {
             RenderPipelineManager.beginCameraRendering -= UpdatePosition;
         }
+#endif // ZERO
 
         private void UpdatePosition(ScriptableRenderContext src, Camera cam)
         {

@@ -343,7 +343,7 @@ namespace WaterSystem
             Unity.Jobs.IJobForExtensions.Run(new SetupWavesJob
             {
                 basicWaves = surfaceData._basicWaveSettings,
-                randomSeed = (uint)surfaceData.randomSeed,
+                randomSeed = surfaceData.randomSeed,
                 waves = _waves,
             }, _waves.Length);
 #endif // ZERO
@@ -353,7 +353,7 @@ namespace WaterSystem
         private struct SetupWavesJob : Unity.Jobs.IJobFor
         {
             [Unity.Collections.ReadOnly] public BasicWaves basicWaves;
-            [Unity.Collections.ReadOnly] public uint randomSeed;
+            [Unity.Collections.ReadOnly] public int randomSeed;
             [Unity.Collections.NativeFixedLength(BasicWaves.numWaves)]
             [Unity.Collections.NativeMatchesParallelForLength]
             [Unity.Collections.WriteOnly] public Unity.Collections.NativeArray<Wave> waves;
@@ -365,7 +365,7 @@ namespace WaterSystem
                 var l = basicWaves.wavelength;
                 const float r = 1f / BasicWaves.numWaves;
 
-                var rand = Unity.Mathematics.Random.CreateFromIndex(randomSeed % (uint.MaxValue - 1));
+                var rand = Unity.Mathematics.Random.CreateFromIndex((uint)(randomSeed + i) % (uint.MaxValue - 1));
                 var p = Mathf.Lerp(0.5f, 1.5f, i * r);
                 var amp = a * p * rand.NextFloat(0.8f, 1.2f);
                 var dir = d + rand.NextFloat(-90f, 90f);

@@ -136,7 +136,7 @@ namespace WaterSystem
                     builder.UseRendererList(passData.renderListHdl);
                     passData.clearColor = m_ClearColor;
 
-                    builder.SetRenderFunc((WaterFxPassData passData, RasterGraphContext rgContext) => ExecutePass(passData, rgContext));
+                    builder.SetRenderFunc(static (WaterFxPassData passData, RasterGraphContext rgContext) => ExecutePass(passData, rgContext));
                     builder.SetGlobalTextureAfterPass(waterFxData.m_TextureHandle, m_WaterFXMapID);
                 }
             }
