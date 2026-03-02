@@ -135,6 +135,8 @@ namespace WaterSystem
                     passData.renderListHdl = renderGraph.CreateRendererList(rendererListParams);
                     builder.UseRendererList(passData.renderListHdl);
                     passData.clearColor = m_ClearColor;
+                
+                    builder.SetShadingRateFragmentSize(GetFragmentSize());
 
                     builder.SetRenderFunc(static (WaterFxPassData passData, RasterGraphContext rgContext) => ExecutePass(passData, rgContext));
                     builder.SetGlobalTextureAfterPass(waterFxData.m_TextureHandle, m_WaterFXMapID);
@@ -251,26 +253,30 @@ namespace WaterSystem
                     // set buffers
                     builder.SetRenderAttachment(resourceData.activeColorTexture, 0);
                     builder.UseTexture(resourceData.cameraDepthTexture);
+                
+                    builder.SetShadingRateFragmentSize(GetFragmentSize());
 
-                    builder.SetRenderFunc(static (CausticsPassData data, RasterGraphContext context) =>
-                    {
-                        var sun = RenderSettings.sun;
-                        var sunMatrix = sun != null
-                            ? sun.transform.localToWorldMatrix
-                            : Matrix4x4.TRS(default, Quaternion.Euler(-45f, 45f, 0f), Vector3.one);
-                        WaterCausticMaterial.SetMatrix(MainLightDir, sunMatrix);
-
-                        const float waterHeight = 2f;
-                        WaterCausticMaterial.SetFloat(WaterLevel, waterHeight);
-
-                        // Create the matrix to position the caustics mesh.
-                        var position = data.cameraPosition;
-                        position.y = waterHeight; // TODO should read a global 'water height' variable.
-                        var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
-
-                        context.cmd.DrawMesh(m_mesh, matrix, WaterCausticMaterial, 0, 0);
-                    });
+                    builder.SetRenderFunc(static (CausticsPassData data, RasterGraphContext context) => ExecutePass(data, context));
                 }
+            }
+
+            static void ExecutePass(CausticsPassData data, RasterGraphContext context)
+            {
+                var sun = RenderSettings.sun;
+                var sunMatrix = sun != null
+                    ? sun.transform.localToWorldMatrix
+                    : Matrix4x4.TRS(default, Quaternion.Euler(-45f, 45f, 0f), Vector3.one);
+                WaterCausticMaterial.SetMatrix(MainLightDir, sunMatrix);
+
+                const float waterHeight = 2f;
+                WaterCausticMaterial.SetFloat(WaterLevel, waterHeight);
+
+                // Create the matrix to position the caustics mesh.
+                var position = data.cameraPosition;
+                position.y = waterHeight; // TODO should read a global 'water height' variable.
+                var matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
+
+                context.cmd.DrawMesh(m_mesh, matrix, WaterCausticMaterial, 0, 0);
             }
         }
 
@@ -391,6 +397,18 @@ namespace WaterSystem
             }, MeshTopology.Triangles, submesh: 0);
 
             return m;
+        }
+        
+        private static ShadingRateFragmentSize GetFragmentSize()
+        {
+            return ScalableBufferManager.widthScaleFactor switch
+            {
+                <= 0.25f => ShadingRateFragmentSize.FragmentSize4x4,
+                <= 0.4f => ShadingRateFragmentSize.FragmentSize2x4,
+                <= 0.6f => ShadingRateFragmentSize.FragmentSize2x2,
+                <= 0.8f => ShadingRateFragmentSize.FragmentSize1x2,
+                _ => ShadingRateFragmentSize.FragmentSize1x1,
+            };
         }
 
         [Serializable]

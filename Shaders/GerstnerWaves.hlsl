@@ -37,15 +37,17 @@ WaveStruct GerstnerWave(half2 pos, float waveCountMulti, half amplitude, half di
 	half3 wave = 0; // wave vector
 	half w = 6.28318 / wavelength; // 2pi over wavelength(hardcoded)
 	half wSpeed = sqrt(9.8 * w); // frequency of the wave based off wavelength
-	half peak = 1.5; // peak value, 1 is the sharpest peaks
-	half qi = peak / (amplitude * w * _WaveCount);
+	//half peak = 0.8; // peak value, 1 is the sharpest peaks
+	half wa = w * amplitude;
+	half qi = wavelength * (0.8 / (_WaveCount * 6.28318));
 
+	half2 omniVec = -omniPos * omni;
 	direction = radians(direction); // convert the incoming degrees to radians, for directional waves
 	half2 dirWaveInput = half2(sin(direction), cos(direction)) * (1 - omni);
-	half2 omniWaveInput = (pos - omniPos) * omni;
+	half2 omniWaveInput = mad(pos, omni, omniVec);
 
 	half2 windDir = normalize(dirWaveInput + omniWaveInput); // calculate wind direction
-	half dir = dot(windDir, pos - (omniPos * omni)); // calculate a gradient along the wind direction
+	half dir = dot(windDir, pos + omniVec); // calculate a gradient along the wind direction
 
 	////////////////////////////position output calculations/////////////////////////
 	half calc = dir * w + -time * wSpeed; // the wave calculation
@@ -53,14 +55,13 @@ WaveStruct GerstnerWave(half2 pos, float waveCountMulti, half amplitude, half di
 	half sinCalc = sin(calc); // sin version(used for vertical undulation)
 
 	// calculate the offsets for the current point
-	wave.xz = qi * amplitude * windDir.xy * cosCalc;
+	wave.xz = qi * cosCalc * windDir.xy;
 	wave.y = ((sinCalc * amplitude)) * waveCountMulti;// the height is divided by the number of waves
 
 	////////////////////////////normal output calculations/////////////////////////
-	half wa = w * amplitude;
 	// normal vector
-	half3 n = half3(-(windDir.xy * wa * cosCalc),
-					1-(qi * wa * sinCalc));
+	half3 n = half3(-(windDir.xy * (wa * cosCalc)),
+					1-(qi * (w * sinCalc)));
 
 	////////////////////////////////assign to output///////////////////////////////
 	waveOut.position = wave * saturate(amplitude * 10000);

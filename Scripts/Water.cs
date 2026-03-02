@@ -365,7 +365,7 @@ namespace WaterSystem
                 var l = basicWaves.wavelength;
                 const float r = 1f / BasicWaves.numWaves;
 
-                var rand = Unity.Mathematics.Random.CreateFromIndex((uint)(randomSeed + i) % (uint.MaxValue - 1));
+                var rand = Unity.Mathematics.Random.CreateFromIndex((uint)(randomSeed + i) % uint.MaxValue);
                 var p = Mathf.Lerp(0.5f, 1.5f, i * r);
                 var amp = a * p * rand.NextFloat(0.8f, 1.2f);
                 var dir = d + rand.NextFloat(-90f, 90f);

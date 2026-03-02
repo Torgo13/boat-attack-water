@@ -21,11 +21,13 @@ public static class LocalToWorldJob
         // The code actually running on the job
         public void Execute(int i)
         {
-            var pos = float4.zero;
-            pos.xyz = PositionsLocal[i];
+            Vector4 pos;
+            pos.x = PositionsLocal[i].x;
+            pos.y = PositionsLocal[i].y;
+            pos.z = PositionsLocal[i].z;
             pos.w = 1f;
             pos = Matrix * pos;
-            PositionsWorld[i] = pos.xyz;
+            PositionsWorld[i] = new float3(pos.x, pos.y, pos.z);
         }
     }
 
@@ -43,7 +45,7 @@ public static class LocalToWorldJob
         Data.Add(guid, jobData);
     }
 
-    public static void ScheduleJob(int guid, Matrix4x4 localToWorld)
+    public static void ScheduleJob(int guid, in Matrix4x4 localToWorld)
     {
         var data = Data[guid];
         if (data.Processing)
